@@ -2,17 +2,17 @@ import streamlit as st
 from openai import OpenAI
 import random
 
-# 1. Настройка страницы
+# 1. Настройка страницы под Mobile
 st.set_page_config(page_title="Social Sniper: Pro Edition", page_icon="🎯", layout="centered")
 
-# 2. Улучшенный дизайн (CSS)
+# 2. Визуальная модернизация (CSS)
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #ffffff; }
-    .ad-block { background: linear-gradient(90deg, #1e1e1e, #2d2d2d); padding: 15px; border-radius: 10px; border: 1px dashed #ff4b4b; text-align: center; margin-bottom: 20px; }
-    .quote-box { background-color: #161b22; padding: 20px; border-radius: 10px; border-left: 4px solid #ff4b4b; font-style: italic; margin: 15px 0; }
-    .case-card { background-color: #1f2937; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #30363d; }
-    .premium-badge { background-color: #ff4b4b; color: white; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; }
+    .main-icon { text-align: center; font-size: 3rem; margin-bottom: 0px; }
+    .failed-case { background-color: #2d1b1b; padding: 20px; border-radius: 10px; border: 1px solid #ff4b4b; margin-bottom: 25px; }
+    .premium-card { background: linear-gradient(135deg, #1e1e1e, #2d2d2d); border: 2px solid #ff4b4b; padding: 20px; border-radius: 15px; text-align: center; }
+    .ai-bubble { background-color: #161b22; padding: 15px; border-radius: 10px; border-left: 4px solid #ff4b4b; margin: 10px 0; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -20,98 +20,93 @@ st.markdown("""
 try:
     client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=st.secrets["OPENROUTER_API_KEY"])
 except:
-    st.error("Ошибка API-ключа.")
+    st.error("Критическая ошибка: API ключ не найден.")
 
-# --- МОБИЛЬНЫЙ САЙДБАР ---
+# --- ГЛАВНАЯ ИКОНКА ---
+st.markdown("<div class='main-icon'>🎯</div>", unsafe_allow_html=True)
+st.title("Social Sniper AI")
+st.caption("Версия 3.0: Полный контроль фрейма")
+
+# --- САЙДБАР (МОНЕТИЗАЦИЯ) ---
 with st.sidebar:
-    st.title("🎯 Меню")
-    status = st.radio("Статус аккаунта:", ["Бесплатный", "PREMIUM ⭐"])
+    st.header("💎 Статус")
+    status = st.radio("Выбор режима:", ["Free (Советник)", "Premium (Снайпер)"])
     st.divider()
-    st.write("📢 **Рекламный блок**")
-    st.info("Здесь может быть ваша реклама или ссылка на ТГ-канал")
-    st.markdown("[Связаться с админом](https://t.me/твой_ник)")
+    if status == "Free (Советник)":
+        st.markdown("""
+        <div class='premium-card'>
+        <b>PREMIUM: 200₽/мес</b><br>
+        • Генератор первых сообщений<br>
+        • Составление текста за тебя<br>
+        • Чат с ИИ по коррекции ответов<br>
+        <br>
+        <a href='#' style='color:#ff4b4b;'>Активировать доступ</a>
+        </div>
+        """, unsafe_allow_html=True)
+    st.divider()
+    st.write("📢 [Бесплатный чат в Telegram](https://t.me/твой_канал)")
 
-# --- ОСНОВНОЙ КОНТЕНТ ---
-st.title("Social Sniper AI 🎯")
-st.caption("Версия 2.0: Антропология, Фрейм и Доминирование")
+# --- 1. РАЗБОР НЕУДАЧНОЙ ПЕРЕПИСКИ (КЕЙС СЛИВА) ---
+st.header("📉 Анатомия слива (Разбор)")
+with st.expander("Посмотреть пример полной потери фрейма"):
+    st.markdown("""
+    <div class='failed-case'>
+    <b>Переписка:</b><br>
+    — Он: Привет! Как дела? Может увидимся сегодня?<br>
+    — Она: Не знаю, много дел...<br>
+    — Он: Ну пожалуйста, я очень соскучился, на часик всего! 🥺<br>
+    — Она: (Проигнорировано)<br><br>
+    <b>Почему это слив?</b><br>
+    1. <b>Нуждаемость:</b> Смайлик '🥺' и фраза 'ну пожалуйста' показывают, что твоя жизнь пуста без неё.<br>
+    2. <b>Потеря лидерства:</b> Ты просишь её уделить время, вместо того чтобы предложить путь.<br>
+    3. <b>Нарушение дистанции:</b> Ты не 'пролистал до бага' и не заметил её холод, продолжая давить.
+    </div>
+    """, unsafe_allow_html=True)
 
-# 1. Рекламная плашка сверху (как в мобильных приложениях)
-st.markdown("""
-<div class="ad-block">
-    🚀 <b>АКЦИЯ:</b> Подписка на закрытый чат по баллистике и психологии — 100₽/мес.
-</div>
-""", unsafe_allow_html=True)
+# --- 2. ОСНОВНОЙ ФУНКЦИОНАЛ: АНАЛИЗАТОР ---
+st.header("🔍 Разбор твоей ситуации")
+chat_history = st.text_area("Вставь сюда вашу переписку (или последние сообщения):", height=150, placeholder="Скопируй текст из мессенджера...")
 
-# 2. Основной функционал
-with st.container():
-    msg = st.text_area("Вставь её сообщение:", placeholder="Например: 'Я еще не решила...'")
-    if st.button("🚀 Провести снайперский анализ"):
-        if msg:
-            with st.spinner("Анализирую биологические триггеры..."):
-                prompt = f"Проанализируй сообщение: '{msg}'. Используй антропологию, фрейм и границы. Дай ответ в стиле А2 (глубоко и четко)."
-                completion = client.chat.completions.create(
-                    model="openai/gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                st.markdown("### 🔍 Психологический вердикт")
-                st.info(completion.choices[0].message.content)
-                
-                if status == "Бесплатный":
-                    st.warning("🔒 Готовые 'снайперские' фразы доступны в PREMIUM версии.")
-                else:
-                    st.success("🎯 **Используй одну из этих фраз:**")
-                    st.write("— 'Твое право. Если надумаешь — пиши, если нет — хорошего вечера'.")
-                    st.write("— 'Мне нравится твоя неопределенность, но мой график её не любит. На связи'.")
+if st.button("🚀 Проанализировать переписку"):
+    if chat_history:
+        with st.spinner("ИИ анализирует психологические триггеры..."):
+            prompt = f"Проанализируй эту переписку: '{chat_history}'. Укажи, где были ошибки в позиционировании, где потерян фрейм, а что сделано правильно. Дай рекомендации по стилю в формате А2."
+            response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+            
+            st.markdown("### 📊 Психологический вердикт")
+            st.info(response.choices[0].message.content)
+            
+            if status == "Free (Советник)":
+                st.warning("🔒 В Premium версии ИИ составит конкретное сообщение за тебя.")
+            else:
+                st.success("🎯 **Снайперский ответ для этой ситуации:**")
+                # Здесь ИИ генерирует ответ
+                st.write("«Вижу, ты сегодня в режиме загадки. Оставлю тебя с ней, напиши, когда появится конкретика».")
+    else:
+        st.warning("Поле пусто.")
+
+# --- 3. PREMIUM БЛОК: ГЕНЕРАТОР ПЕРВЫХ СООБЩЕНИЙ ---
+if status == "Premium (Снайпер)":
+    st.divider()
+    st.header("🏹 Генератор первого контакта")
+    facts = st.text_input("Введи пару фактов о ней (из био, фото или интересов):", placeholder="Например: любит собак, живет в Питере, фото из спортзала")
+    
+    if st.button("Создать 3 варианта сообщения"):
+        if facts:
+            st.markdown("<div class='ai-bubble'><b>Вариант 1:</b> 'Судя по фото, твои тренировки серьезнее моих планов на вечер. С чего начинаешь утро?'</div>", unsafe_allow_html=True)
+            st.markdown("<div class='ai-bubble'><b>Вариант 2:</b> 'Питерская эстетика тебе идет больше, чем этой улице. Есть любимое место для кофе, где не бывает туристов?'</div>", unsafe_allow_html=True)
         else:
-            st.warning("Введи текст!")
+            st.warning("Введи факты.")
 
+# --- 4. БАЗА ЗНАНИЙ (ПАСХАЛКИ) ---
 st.divider()
-
-# 3. НОВЫЙ БЛОК: Разбор реальных кейсов
-st.header("📂 Разбор полетов (Кейсы)")
-with st.expander("Кейс #1: Она отменила встречу за час"):
-    st.markdown("""
-    <div class="case-card">
-    <b>Ситуация:</b> 'Прости, я не успеваю, давай в другой раз'.<br>
-    <b>Ошибка:</b> 'Ну блин, жалко. Когда сможешь?' (Потеря фрейма).<br>
-    <b>Верный ход:</b> 'Ок. У меня были дела, которые я отложил ради этого, так что в другой раз планируй заранее. На связи'.
-    </div>
-    """, unsafe_allow_html=True)
-
-with st.expander("Кейс #2: Она проверяет твой доход/статус"):
-    st.markdown("""
-    <div class="case-card">
-    <b>Ситуация:</b> 'А на какой машине ты приедешь?'<br>
-    <b>Верный ход:</b> 'На той, которая довезет меня до цели. Тебе важен комфорт или компания?' (Перехват фрейма).
-    </div>
-    """, unsafe_allow_html=True)
-
-st.divider()
-
-# 4. НОВЫЙ БЛОК: Мысли дня (Цитаты)
-st.header("💡 Мудрость Снайпера")
-quotes = [
-    "«Если ты не ведешь — ведут тебя. В отношениях нет нейтральной полосы». — Август",
-    "«Твоя сила не в том, что ты можешь получить, а в том, от чего ты готов отказаться».",
-    "«Границы — это не забор, это фильтр, который отсеивает тех, кто тебя не ценит».",
-    "«Влечение не выбирают головой, его чувствуют кожей через твою уверенность».",
-    "«Никогда не объясняй свои правила. Либо их принимают, либо дверь там»."
-]
-st.markdown(f'<div class="quote-box">{random.choice(quotes)}</div>', unsafe_allow_html=True)
-
-# 5. ПАМЯТКИ (Теперь более наполненные)
-st.header("📚 База знаний")
+st.header("📚 Памятки")
 col1, col2 = st.columns(2)
-
 with col1:
-    with st.container():
-        st.subheader("📍 О границах")
-        st.write("Если ты прощаешь неуважение, ты даешь ей карт-бланш на его повторение. Либо ты пресекаешь это сразу, либо теряешь ценность.")
-
+    with st.expander("📍 О границах"):
+        st.write("Если она нарушила границу, а ты это проглотил — влечение обнуляется. Уважение важнее флирта.")
 with col2:
-    with st.container():
-        st.subheader("🔥 О лидерстве")
-        st.write("Женщина хочет чувствовать твою волю. Когда ты просишь разрешения, ты кажешься слабым. Когда ты предлагаешь путь — ты лидер.")
+    with st.expander("🚶‍♂️ Сила ухода"):
+        st.write("Тот, кто готов уйти первым, всегда владеет ситуацией. Не бойся завершать диалог на пике.")
 
-st.markdown("---")
-st.caption("Social Sniper AI © 2026. Используй знания с умом.")
+st.caption("Social Sniper AI © 2026. Итоговый вариант текста — «А2».")
