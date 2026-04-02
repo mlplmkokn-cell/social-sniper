@@ -26,15 +26,17 @@ except Exception:
 # ==========================================
 with st.sidebar:
     st.title("🎯 Sniper Menu")
-    status = st.sidebar.radio("Твой статус:", ["Free (Антрополог)", "Premium ⭐ (Снайпер)"])
+    status = st.radio("Твой режим:", ["Free (Антрополог)", "Premium ⭐ (Снайпер)"])
     st.divider()
-    st.write("📢 **Рекламный блок**")
-    st.info("Твой ТГ-канал: [Подписаться](https://t.me/твой_канал)")
+    st.info("📢 [Закрытый TG-канал](https://t.me/твой_канал)")
     
+    # Обновленный список фишек для наглядности
     if status == "Free (Антрополог)":
         st.markdown("---")
         st.write("💰 **Premium: 200₽**")
-        st.caption("Докрутка сообщений + Снайперские ответы")
+        st.caption("✅ Снайперский ответ")
+        st.caption("✅ Генератор 'First Strike'")
+        st.caption("✅ Интерактивная докрутка")
 
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
@@ -97,14 +99,48 @@ st.divider()
 # ==========================================
 # МОДУЛЬ 6: БАЗА ПАСХАЛОК
 # ==========================================
-st.header("📚 База знаний")
-p1, p2 = st.columns(2)
-with p1:
-    with st.expander("📍 О границах"):
-        st.write("Твои границы нерушимы. Если она их шатает — это тест. Не пройдешь — потеряешь влечение.")
-with p2:
-    with st.expander("🔥 О контексте"):
-        st.write("Выбирай места, где можно двигаться и трогать, а не сидеть друг против друга.")
+# ==========================================
+# SLOT 6: PREMIUM MODULE (Генератор и Докрутка)
+# ==========================================
+if status == "Premium ⭐ (Снайпер)":
+    st.header("🏹 First Strike: Генератор открытия")
+    st.write("Введи факты о ней (из Instagram, описания профиля или фото), чтобы ИИ нашел зацепку.")
+    
+    girl_triggers = st.text_input("Триггеры (например: любит корги, фото из гор, Питер):", key="triggers")
+    
+    if st.button("🎯 Сгенерировать 3 варианта"):
+        if girl_triggers:
+            with st.spinner("Ищу 'скин на рынке'..."):
+                prompt = f"На основе этих фактов: '{girl_triggers}' создай 3 варианта первого сообщения. Стиль: А2, низкая нуждаемость, высокий статус, легкая ирония. Без банальщины типа 'Привет, красавица'."
+                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+                st.session_state.first_strike_results = response.choices[0].message.content
+        else:
+            st.warning("Введи хотя бы один факт.")
 
-st.markdown("---")
-st.caption("Social Sniper AI v4.9. Исправлен синтаксис.")
+    # Вывод результатов генерации
+    if 'first_strike_results' in st.session_state:
+        st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
+        st.write(st.session_state.first_strike_results)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Интерактивная докрутка (Чат с ИИ)
+        st.write("---")
+        st.subheader("🔧 Докрутка сообщения")
+        feedback = st.text_input("Что изменить? (например: 'сделай жестче' или 'добавь юмора'):", key="feedback")
+        
+        if st.button("🔄 Переделать"):
+            with st.spinner("Пролистаю до бага в тексте..."):
+                refine_prompt = f"Предыдущие варианты: {st.session_state.first_strike_results}. Юзер хочет изменить: {feedback}. Выдай новые 3 варианта в стиле А2."
+                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": refine_prompt}])
+                st.session_state.first_strike_results = response.choices[0].message.content
+                st.rerun()
+
+else:
+    # Тизер для бесплатных пользователей
+    st.markdown("""
+    <div class='premium-lock-box'>
+    <h3>💎 Доступ Снайпера закрыт</h3>
+    <p>Чтобы ИИ генерировал первые сообщения по триггерам из Instagram и помогал их докручивать — активируй Premium.</p>
+    <a href='#' style='color:#ff4b4b; font-weight:bold;'>АКТИВИРОВАТЬ ЗА 200₽</a>
+    </div>
+    """, unsafe_allow_html=True)
