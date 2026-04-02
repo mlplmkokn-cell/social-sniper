@@ -25,18 +25,18 @@ except Exception:
 # МОДУЛЬ 2: САЙДБАР
 # ==========================================
 with st.sidebar:
-    st.title("🎯 Sniper Menu")
-    status = st.radio("Твой режим:", ["Free (Антрополог)", "Premium ⭐ (Снайпер)"])
+    st.title("🧬 Навигация")
+    status = st.radio("Твой статус:", ["Free (Антрополог)", "Premium ⭐ (Доступ открыт)"])
+    st.divider()
+    
+    st.markdown("""
+    **Что входит в Premium:**
+    * **🎯 Идеальный ответ:** Получаешь готовую фразу, которая выравнивает твой статус в любой ситуации.
+    * **🏹 Идеальное начало:** Генерация первой фразы на основе интересов (Instagram, хобби) с максимальным процентом отклика.
+    * **🔧 Интерактивный тюнинг:** Чат, где ты пишешь свой вариант, а ИИ исправляет ошибки суеты и делает его "дороже".
+    """)
     st.divider()
     st.info("📢 [Закрытый TG-канал](https://t.me/твой_канал)")
-    
-    # Обновленный список фишек для наглядности
-    if status == "Free (Антрополог)":
-        st.markdown("---")
-        st.write("💰 **Premium: 200₽**")
-        st.caption("✅ Снайперский ответ")
-        st.caption("✅ Генератор 'First Strike'")
-        st.caption("✅ Интерактивная докрутка")
 
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
@@ -100,47 +100,54 @@ st.divider()
 # МОДУЛЬ 6: БАЗА ПАСХАЛОК
 # ==========================================
 # ==========================================
-# SLOT 6: PREMIUM MODULE (Генератор и Докрутка)
+# SLOT 6: FIRST STRIKE (Premium Модуль)
 # ==========================================
-if status == "Premium ⭐ (Снайпер)":
-    st.header("🏹 First Strike: Генератор открытия")
-    st.write("Введи факты о ней (из Instagram, описания профиля или фото), чтобы ИИ нашел зацепку.")
+if status == "Premium ⭐ (Доступ открыт)":
+    st.header("🏹 First Strike: Проектирование входа")
+    st.write("Проанализируй её профиль (Instagram, описание, фото) и впиши сюда ключевые зацепки.")
     
-    girl_triggers = st.text_input("Триггеры (например: любит корги, фото из гор, Питер):", key="triggers")
+    triggers = st.text_area("Зацепки из профиля (например: фото с собакой, любит винил, часто бывает в горах):", 
+                           placeholder="Что она любит? О чем ее контент?", key="tg_input")
     
-    if st.button("🎯 Сгенерировать 3 варианта"):
-        if girl_triggers:
-            with st.spinner("Ищу 'скин на рынке'..."):
-                prompt = f"На основе этих фактов: '{girl_triggers}' создай 3 варианта первого сообщения. Стиль: А2, низкая нуждаемость, высокий статус, легкая ирония. Без банальщины типа 'Привет, красавица'."
+    if st.button("✨ Сгенерировать идеальные зацепки"):
+        if triggers:
+            with st.spinner("Анализирую социальные триггеры..."):
+                prompt = f"""
+                На основе триггеров: '{triggers}' создай 3 варианта первого сообщения.
+                ТРЕБОВАНИЯ:
+                - Стиль А2 (глубоко, без банальностей).
+                - Исключить комплименты внешности.
+                - Использовать легкую провокацию или общие ценности.
+                - Цель: Вызвать любопытство и желание ответить.
+                - Никакой суеты и 'Привет, как дела'.
+                """
                 response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-                st.session_state.first_strike_results = response.choices[0].message.content
+                st.session_state.strike_results = response.choices[0].message.content
         else:
-            st.warning("Введи хотя бы один факт.")
+            st.warning("Введи хотя бы один триггер.")
 
-    # Вывод результатов генерации
-    if 'first_strike_results' in st.session_state:
+    if 'strike_results' in st.session_state:
         st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
-        st.write(st.session_state.first_strike_results)
+        st.write(st.session_state.strike_results)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Интерактивная докрутка (Чат с ИИ)
-        st.write("---")
-        st.subheader("🔧 Докрутка сообщения")
-        feedback = st.text_input("Что изменить? (например: 'сделай жестче' или 'добавь юмора'):", key="feedback")
-        
-        if st.button("🔄 Переделать"):
-            with st.spinner("Пролистаю до бага в тексте..."):
-                refine_prompt = f"Предыдущие варианты: {st.session_state.first_strike_results}. Юзер хочет изменить: {feedback}. Выдай новые 3 варианта в стиле А2."
-                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": refine_prompt}])
-                st.session_state.first_strike_results = response.choices[0].message.content
+        # Блок интерактивного изменения
+        st.subheader("🔧 Докрутка под твой стиль")
+        adjust = st.text_input("Как изменить? (например: 'сделай короче' или 'добавь больше дерзости'):")
+        if st.button("🔄 Обновить варианты"):
+            with st.spinner("Пересчитываю контекст..."):
+                prompt = f"Переделай эти варианты: {st.session_state.strike_results}, учитывая пожелание: {adjust}. Сохрани стиль А2."
+                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+                st.session_state.strike_results = response.choices[0].message.content
                 st.rerun()
 
 else:
-    # Тизер для бесплатных пользователей
     st.markdown("""
-    <div class='premium-lock-box'>
-    <h3>💎 Доступ Снайпера закрыт</h3>
-    <p>Чтобы ИИ генерировал первые сообщения по триггерам из Instagram и помогал их докручивать — активируй Premium.</p>
-    <a href='#' style='color:#ff4b4b; font-weight:bold;'>АКТИВИРОВАТЬ ЗА 200₽</a>
+    <div style='border: 1px solid #4a4a4a; padding: 20px; border-radius: 10px; text-align: center;'>
+        <p>🔒 <b>Генератор идеальных сообщений заблокирован.</b></p>
+        <p style='font-size: 0.8rem; color: #8b949e;'>
+           Хочешь перестать гадать, что написать? Premium дает доступ к алгоритму, 
+           который находит слабые места в защите и генерирует зацепки по Instagram-профилю.
+        </p>
     </div>
     """, unsafe_allow_html=True)
