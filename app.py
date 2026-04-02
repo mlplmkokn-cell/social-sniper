@@ -1,6 +1,12 @@
 import streamlit as st
 from openai import OpenAI
-
+# Инициализация памяти (чтобы чат не стирался при каждом нажатии кнопки)
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'pro_status' not in st.session_state:
+    st.session_state.pro_status = False
+if 'last_generation' not in st.session_state:
+    st.session_state.last_generation = None
 # ==========================================
 # МОДУЛЬ 1: СТИЛЬ И КОНФИГУРАЦИЯ
 # ==========================================
@@ -22,17 +28,24 @@ st.markdown("""
 # ==========================================
 with st.sidebar:
     st.title("🧬 Навигация")
-    status = st.radio("Твой статус:", ["Free (Антрополог)", "Premium ⭐ (Доступ открыт)"])
-    st.divider()
     
-    st.markdown("""
-    **Что входит в Premium:**
-    * **🎯 Идеальный ответ:** Получаешь готовую фразу, которая выравнивает твой статус в любой ситуации.
-    * **🏹 Идеальное начало:** Генерация первой фразы на основе интересов (Instagram, хобби) с максимальным процентом отклика.
-    * **🔧 Интерактивный тюнинг:** Чат, где ты пишешь свой вариант, а ИИ исправляет ошибки суеты и делает его "дороже".
-    """)
+    # Поле для ввода кода (твой "ключ" к Pro)
+    access_code = st.text_input("Введи код доступа (Pro):", type="password")
+    if access_code == "A2_PRO_2026": # Придумай свой секретный код
+        st.session_state.pro_status = True
+        st.success("✅ Доступ открыт")
+    else:
+        st.session_state.pro_status = False
+
     st.divider()
-    st.info("📢 [Закрытый TG-канал](https://t.me/твой_канал)")
+    if not st.session_state.pro_status:
+        st.error("💎 Доступ ограничен")
+        st.write("**Как получить Pro:**")
+        st.write("1. Переведи 200₽ на [ТВОЙ НОМЕР/КАРТА]")
+        st.write("2. Скинь скрин в ТГ: [@ТВОЙ_НИК]")
+        st.write("3. Получи вечный код доступа.")
+    else:
+        st.info("⭐ Режим эксперта активен")
 
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
@@ -112,54 +125,48 @@ st.divider()
 # МОДУЛЬ 6: БАЗА ПАСХАЛОК
 # ==========================================
 # ==========================================
-# SLOT 6: FIRST STRIKE (Premium Модуль)
+# SLOT 6: PREMIUM — ИНТЕРФЕЙС ДОКРУТКИ
 # ==========================================
-if status == "Premium ⭐ (Доступ открыт)":
-    st.header("🏹 First Strike: Проектирование входа")
-    st.write("Проанализируй её профиль (Instagram, описание, фото) и впиши сюда ключевые зацепки.")
+if st.session_state.pro_status:
+    st.header("🏹 Проектирование входа & Тюнинг")
     
-    triggers = st.text_area("Зацепки из профиля (например: фото с собакой, любит винил, часто бывает в горах):", 
-                           placeholder="Что она любит? О чем ее контент?", key="tg_input")
+    # Вкладки для удобства
+    tab1, tab2 = st.tabs(["Первое сообщение", "Докрутка твоего варианта"])
     
-    if st.button("✨ Сгенерировать идеальные зацепки"):
-        if triggers:
-            with st.spinner("Анализирую социальные триггеры..."):
-                prompt = f"""
-                На основе триггеров: '{triggers}' создай 3 варианта первого сообщения.
-                ТРЕБОВАНИЯ:
-                - Стиль А2 (глубоко, без банальностей).
-                - Исключить комплименты внешности.
-                - Использовать легкую провокацию или общие ценности.
-                - Цель: Вызвать любопытство и желание ответить.
-                - Никакой суеты и 'Привет, как дела'.
-                """
-                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-                st.session_state.strike_results = response.choices[0].message.content
-        else:
-            st.warning("Введи хотя бы один триггер.")
+    with tab1:
+        triggers = st.text_area("Анализ профиля (Instagram триггеры):", 
+                               placeholder="Напиши факты: что на фото, что в описании, какие хобби...")
+        if st.button("✨ Сгенерировать базу"):
+            prompt = f"На основе триггеров '{triggers}' создай 3 глубоких зацепки в стиле А2. Без суеты."
+            response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+            st.session_state.last_generation = response.choices[0].message.content
 
-    if 'strike_results' in st.session_state:
-        st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
-        st.write(st.session_state.strike_results)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Блок интерактивного изменения
-        st.subheader("🔧 Докрутка под твой стиль")
-        adjust = st.text_input("Как изменить? (например: 'сделай короче' или 'добавь больше дерзости'):")
-        if st.button("🔄 Обновить варианты"):
-            with st.spinner("Пересчитываю контекст..."):
-                prompt = f"Переделай эти варианты: {st.session_state.strike_results}, учитывая пожелание: {adjust}. Сохрани стиль А2."
-                response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-                st.session_state.strike_results = response.choices[0].message.content
+        if st.session_state.last_generation:
+            st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
+            st.write(st.session_state.last_generation)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # ИНТЕРАКТИВ
+            feedback = st.text_input("Что изменить? (например: 'сделай жестче' или 'добавь больше иронии'):")
+            if st.button("🔄 Докрутить"):
+                refine_prompt = f"Контекст: {st.session_state.last_generation}. Твоя задача изменить это под запрос: {feedback}. Сохрани глубину А2."
+                res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": refine_prompt}])
+                st.session_state.last_generation = res.choices[0].message.content
                 st.rerun()
+
+    with tab2:
+        st.subheader("🔧 Интерактивный тюнинг (Дорогой ответ)")
+        user_draft = st.text_area("Вставь свой вариант ответа:", placeholder="Напиши, как бы ты ответил сам...")
+        if st.button("💎 Сделать дороже"):
+            tuning_prompt = f"Исправь ошибки суеты и низкой ценности в этом сообщении: '{user_draft}'. Сделай его статусным, кратким и в стиле А2."
+            res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": tuning_prompt}])
+            st.success(res.choices[0].message.content)
+            st.info("Подсказка: Мы убрали лишние оправдания и добавили фокус на твои границы.")
 
 else:
     st.markdown("""
-    <div style='border: 1px solid #4a4a4a; padding: 20px; border-radius: 10px; text-align: center;'>
-        <p>🔒 <b>Генератор идеальных сообщений заблокирован.</b></p>
-        <p style='font-size: 0.8rem; color: #8b949e;'>
-           Хочешь перестать гадать, что написать? Premium дает доступ к алгоритму, 
-           который находит слабые места в защите и генерирует зацепки по Instagram-профилю.
-        </p>
+    <div style='background: #1a1a1a; padding: 30px; border-radius: 15px; border: 1px dashed #4a4a4a; text-align: center;'>
+        <h4>🧬 Модуль проектирования закрыт</h4>
+        <p>Для доступа к интерактивной докрутке сообщений и анализу Instagram-триггеров введи код в боковом меню.</p>
     </div>
     """, unsafe_allow_html=True)
