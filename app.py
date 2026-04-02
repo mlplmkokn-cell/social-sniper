@@ -11,15 +11,20 @@ if 'last_generation' not in st.session_state:
 # МОДУЛЬ 1: СТИЛЬ И КОНФИГУРАЦИЯ
 # ==========================================
 
-st.set_page_config(page_title="Social AI", page_icon="🧬", layout="centered")
-
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; color: #ffffff; }
-    .premium-top { background: linear-gradient(90deg, #1e1e1e, #2d2d2d); padding: 20px; border-radius: 15px; border: 1px solid #4a4a4a; text-align: center; margin-bottom: 30px; }
-    .feature-tag { background: #2d2d2d; color: #00ff88; padding: 4px 10px; border-radius: 5px; font-size: 0.8rem; margin-right: 10px; border: 1px solid #00ff88; }
-    .analysis-box { background-color: #161b22; padding: 20px; border-radius: 10px; border-left: 5px solid #00ff88; margin: 15px 0; }
-    .failed-case { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px dotted #4a4a4a; margin-bottom: 25px; }
+    /* Делаем фон приложения более темным и текстурированным */
+    .stApp { 
+        background-color: #0a0c10;
+        background-image: radial-gradient(#1a1d24 1px, transparent 1px);
+        background-size: 20px 20px;
+        color: #ffffff; 
+    }
+    
+    /* Стилизация заголовка с "огоньком" */
+    .stHeader h1 {
+        text-shadow: 0 0 10px #ff4b4b, 0 0 20px #ff4b4b;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -27,37 +32,36 @@ st.markdown("""
 # МОДУЛЬ 2: САЙДБАР
 # ==========================================
 with st.sidebar:
-    st.title("🧬 Навигация")
+    st.title("🧬 Social AI")
     
-    # ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ ТЕСТОВ (оставляем для тебя)
-    status_mode = st.radio("Режим доступа:", ["Базовый (Наблюдатель)", "Premium (Архитектор)"])
-    st.session_state.pro_status = True if status_mode == "Premium (Архитектор)" else False
+    # ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ ТЕСТОВ (Оставляем тебе)
+    status_mode = st.radio("Режим:", ["Базовый", "Premium ⭐"])
+    st.session_state.pro_status = True if status_mode == "Premium ⭐" else False
 
     st.divider()
     
     if not st.session_state.pro_status:
         st.markdown("### 💎 Активировать Premium")
         
-        # Список "триггеров" для покупки
+        # Визуальный ХУК (Безопасный арт)
+        # Мы используем стилизованный нейросетевой арт. Это безопасно и стильно.
+        # Можешь заменить эту ссылку на свою (созданную в Midjourney/Kandinsky)
+        st.image("https://raw.githubusercontent.com/Anvil-Developer/public-assets/main/social-ai-hook.jpg", 
+                 caption="Твой проводник в мире фрейма", use_container_width=True)
+        
         st.markdown("""
-        1. **🔥 Проектировщик Входа** — *Ищу зацепки в её Instagram и создаю первое сообщение, на которое невозможно не ответить.*
-        2. **💎 Корректор Ценности** — *Присылаешь свой вариант, а я убираю из него 'нуждаемость' и слабость. Делаю текст статусным.*
-        3. **🤖 AI-Напарник** — *Не просто фраза, а живой диалог. Докручиваем сообщение вместе, пока оно не станет идеальным.*
+        1. **🔥 Проектировщик Входа**
+        2. **💎 Корректор Ценности**
         """)
         
-        st.markdown("---")
-        st.write("💰 **Цена: 200₽ (Навсегда)**")
+        st.divider()
         st.write("📸 **Оплата по QR (СБП):**")
-        
-        # Инструкция и заглушка под QR
-        st.info("Сканируй QR-код в приложении банка и присылай скрин в ТГ.")
-        # Чтобы вывести реальный QR, просто замени ссылку ниже на ссылку на фото своего QR-кода
-        st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", caption="Отсканируй для оплаты")
-        
-        st.markdown("[Написать в поддержку / Скинуть скрин](https://t.me/твой_ник)")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", width=150)
+        st.caption("Сканируй QR, плати 200₽ и присылай скрин.")
+        st.markdown("[Скинуть скрин в ТГ](https://t.me/твой_ник)")
     else:
         st.success("⭐ Доступ Архитектора активен")
-
+        # Здесь можно добавить другой арт, более сдержанный
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
 # ==========================================
