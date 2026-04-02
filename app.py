@@ -29,23 +29,34 @@ st.markdown("""
 with st.sidebar:
     st.title("🧬 Навигация")
     
-    # Поле для ввода кода (твой "ключ" к Pro)
-    access_code = st.text_input("Введи код доступа (Pro):", type="password")
-    if access_code == "A2_PRO_2026": # Придумай свой секретный код
-        st.session_state.pro_status = True
-        st.success("✅ Доступ открыт")
-    else:
-        st.session_state.pro_status = False
+    # ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ ТЕСТОВ (оставляем для тебя)
+    status_mode = st.radio("Режим доступа:", ["Базовый (Наблюдатель)", "Premium (Архитектор)"])
+    st.session_state.pro_status = True if status_mode == "Premium (Архитектор)" else False
 
     st.divider()
+    
     if not st.session_state.pro_status:
-        st.error("💎 Доступ ограничен")
-        st.write("**Как получить Pro:**")
-        st.write("1. Переведи 200₽ на [ТВОЙ НОМЕР/КАРТА]")
-        st.write("2. Скинь скрин в ТГ: [@ТВОЙ_НИК]")
-        st.write("3. Получи вечный код доступа.")
+        st.markdown("### 💎 Активировать Premium")
+        
+        # Список "триггеров" для покупки
+        st.markdown("""
+        1. **🔥 Проектировщик Входа** — *Ищу зацепки в её Instagram и создаю первое сообщение, на которое невозможно не ответить.*
+        2. **💎 Корректор Ценности** — *Присылаешь свой вариант, а я убираю из него 'нуждаемость' и слабость. Делаю текст статусным.*
+        3. **🤖 AI-Напарник** — *Не просто фраза, а живой диалог. Докручиваем сообщение вместе, пока оно не станет идеальным.*
+        """)
+        
+        st.markdown("---")
+        st.write("💰 **Цена: 200₽ (Навсегда)**")
+        st.write("📸 **Оплата по QR (СБП):**")
+        
+        # Инструкция и заглушка под QR
+        st.info("Сканируй QR-код в приложении банка и присылай скрин в ТГ.")
+        # Чтобы вывести реальный QR, просто замени ссылку ниже на ссылку на фото своего QR-кода
+        st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", caption="Отсканируй для оплаты")
+        
+        st.markdown("[Написать в поддержку / Скинуть скрин](https://t.me/твой_ник)")
     else:
-        st.info("⭐ Режим эксперта активен")
+        st.success("⭐ Доступ Архитектора активен")
 
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
@@ -124,49 +135,64 @@ st.divider()
 # ==========================================
 # МОДУЛЬ 6: БАЗА ПАСХАЛОК
 # ==========================================
-# ==========================================
-# SLOT 6: PREMIUM — ИНТЕРФЕЙС ДОКРУТКИ
-# ==========================================
-if st.session_state.pro_status:
-    st.header("🏹 Проектирование входа & Тюнинг")
-    
-    # Вкладки для удобства
-    tab1, tab2 = st.tabs(["Первое сообщение", "Докрутка твоего варианта"])
-    
-    with tab1:
-        triggers = st.text_area("Анализ профиля (Instagram триггеры):", 
-                               placeholder="Напиши факты: что на фото, что в описании, какие хобби...")
-        if st.button("✨ Сгенерировать базу"):
-            prompt = f"На основе триггеров '{triggers}' создай 3 глубоких зацепки в стиле А2. Без суеты."
-            response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-            st.session_state.last_generation = response.choices[0].message.content
 
-        if st.session_state.last_generation:
-            st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
-            st.write(st.session_state.last_generation)
-            st.markdown("</div>", unsafe_allow_html=True)
-            
-            # ИНТЕРАКТИВ
-            feedback = st.text_input("Что изменить? (например: 'сделай жестче' или 'добавь больше иронии'):")
-            if st.button("🔄 Докрутить"):
-                refine_prompt = f"Контекст: {st.session_state.last_generation}. Твоя задача изменить это под запрос: {feedback}. Сохрани глубину А2."
+if st.session_state.pro_status:
+    st.header("🛠 Инструментарий Premium")
+    
+    # Переключение между функциями через понятные вкладки
+    tab_strike, tab_tune = st.tabs(["🚀 Проектировщик Входа", "💎 Корректор Ценности"])
+    
+    with tab_strike:
+        st.subheader("Сканер Личности (Instagram / Bio)")
+        st.write("Впиши любые факты о ней, и я найду 'крючок' для общения.")
+        triggers = st.text_area("Факты о ней:", placeholder="Например: любит тату, фото из Парижа, в сторис всегда кофе...", key="trig_area")
+        
+        if st.button("🔍 Найти идеальную зацепку"):
+            if triggers:
+                with st.spinner("Анализирую социальный профиль..."):
+                    prompt = f"На основе фактов '{triggers}' создай 3 варианта сообщения в стиле А2. Задача: зацепить внимание без подстройки и комплиментов."
+                    res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+                    st.session_state.last_generation = res.choices[0].message.content
+            else:
+                st.warning("Сначала введи факты.")
+
+    with tab_tune:
+        st.subheader("Фильтр Статуса")
+        st.write("Вставь сообщение, которое хочешь отправить. Я уберу из него всё, что выдает в тебе 'слабого' игрока.")
+        user_draft = st.text_area("Твой черновик:", placeholder="Напиши, что ты хотел ей отправить...", key="draft_area")
+        
+        if st.button("💎 Сделать сообщение 'дороже'"):
+            if user_draft:
+                with st.spinner("Удаляю суету и оправдания..."):
+                    tuning_prompt = f"Перепиши это сообщение в стиле А2, убрав нуждаемость и лишние слова: '{user_draft}'. Сделай его мужским и лаконичным."
+                    res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": tuning_prompt}])
+                    st.session_state.last_generation = res.choices[0].message.content
+            else:
+                st.warning("Вставь свой текст.")
+
+    # ОБЩИЙ БЛОК ВЫВОДА И ИНТЕРАКТИВНОЙ ДОКРУТКИ
+    if st.session_state.last_generation:
+        st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
+        st.markdown("**Рекомендация Social AI:**")
+        st.write(st.session_state.last_generation)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # ИНТЕРАКТИВНЫЙ ТЮНИНГ
+        st.write("---")
+        st.write("🗣 **AI-Напарник:** Не нравится результат? Давай подправим.")
+        feedback = st.text_input("Что изменить? (например: 'сделай жестче', 'добавь юмора', 'слишком длинно')")
+        
+        if st.button("🔄 Переделать по моему запросу"):
+            with st.spinner("Пересчитываю траекторию..."):
+                refine_prompt = f"Твой прошлый вариант: {st.session_state.last_generation}. Измени его с учетом этого пожелания: {feedback}. Стиль А2."
                 res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": refine_prompt}])
                 st.session_state.last_generation = res.choices[0].message.content
                 st.rerun()
-
-    with tab2:
-        st.subheader("🔧 Интерактивный тюнинг (Дорогой ответ)")
-        user_draft = st.text_area("Вставь свой вариант ответа:", placeholder="Напиши, как бы ты ответил сам...")
-        if st.button("💎 Сделать дороже"):
-            tuning_prompt = f"Исправь ошибки суеты и низкой ценности в этом сообщении: '{user_draft}'. Сделай его статусным, кратким и в стиле А2."
-            res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": tuning_prompt}])
-            st.success(res.choices[0].message.content)
-            st.info("Подсказка: Мы убрали лишние оправдания и добавили фокус на твои границы.")
-
 else:
+    # Блок-заглушка (Тизер)
     st.markdown("""
     <div style='background: #1a1a1a; padding: 30px; border-radius: 15px; border: 1px dashed #4a4a4a; text-align: center;'>
-        <h4>🧬 Модуль проектирования закрыт</h4>
-        <p>Для доступа к интерактивной докрутке сообщений и анализу Instagram-триггеров введи код в боковом меню.</p>
+        <h4>🧬 Доступ к проектированию закрыт</h4>
+        <p style='color: #8b949e;'>Функции 'Сканер Личности' и 'Фильтр Статуса' доступны только в Premium-режиме.</p>
     </div>
     """, unsafe_allow_html=True)
