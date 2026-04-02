@@ -4,22 +4,18 @@ from openai import OpenAI
 # ==========================================
 # МОДУЛЬ 1: СТИЛЬ И КОНФИГУРАЦИЯ
 # ==========================================
-st.set_page_config(page_title="Social Sniper AI", page_icon="🎯", layout="centered")
+
+st.set_page_config(page_title="Social AI", page_icon="🧬", layout="centered")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #ffffff; }
-    .ad-banner { background: #1e1e1e; padding: 15px; border-radius: 10px; border-bottom: 3px solid #ff4b4b; text-align: center; margin-bottom: 20px; }
-    .analysis-box { background-color: #161b22; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin: 15px 0; }
-    .failed-case { background-color: #2d1b1b; padding: 20px; border-radius: 10px; border: 1px solid #ff4b4b; margin-bottom: 25px; }
-    .logic-hint { color: #8b949e; font-size: 0.9rem; border-top: 1px solid #30363d; padding-top: 10px; margin-top: 10px; }
+    .premium-top { background: linear-gradient(90deg, #1e1e1e, #2d2d2d); padding: 20px; border-radius: 15px; border: 1px solid #4a4a4a; text-align: center; margin-bottom: 30px; }
+    .feature-tag { background: #2d2d2d; color: #00ff88; padding: 4px 10px; border-radius: 5px; font-size: 0.8rem; margin-right: 10px; border: 1px solid #00ff88; }
+    .analysis-box { background-color: #161b22; padding: 20px; border-radius: 10px; border-left: 5px solid #00ff88; margin: 15px 0; }
+    .failed-case { background-color: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px dotted #4a4a4a; margin-bottom: 25px; }
     </style>
     """, unsafe_allow_html=True)
-
-try:
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=st.secrets["OPENROUTER_API_KEY"])
-except Exception:
-    st.error("Настрой API-ключ в Secrets!")
 
 # ==========================================
 # МОДУЛЬ 2: САЙДБАР
@@ -41,19 +37,38 @@ with st.sidebar:
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
 # ==========================================
-st.markdown("<div class='ad-banner'>🚀 <b>КЕЙС ДНЯ:</b> Как не слить встречу за 30 минут до начала</div>", unsafe_allow_html=True)
+# ==========================================
+# SLOT 3: HEADER & REAL CASE (Тонкая ошибка)
+# ==========================================
+st.title("🧬 Social AI")
+st.caption("Антропологический анализ коммуникации и проектирование фрейма")
 
-st.header("📉 Анатомия слива (Разбор)")
+# ВЫНОСИМ ПРЕМИУМ ВЫШЕ (Тизер для всех)
+if 'status' not in st.session_state: st.session_state.status = "Free"
+
 st.markdown("""
-<div class='failed-case'>
-<b>Ситуация:</b> Она меняет место встречи в последний момент.<br>
-<b>Слив:</b> "Ну ладно, давай там, мне без разницы".<br>
-<b>Почему это плохо:</b> Ты показал, что твой комфорт вторичен. Ты стал ведомым.<br>
-<b>Как надо:</b> "Мне там неудобно. Жду тебя на месте".
+<div class='premium-top'>
+    <h3 style='margin-bottom:10px;'>💎 PREMIUM ДОСТУП</h3>
+    <div style='display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;'>
+        <span class='feature-tag'>✅ Идеальное первое сообщение</span>
+        <span class='feature-tag'>✅ Интерактивная докрутка</span>
+        <span class='feature-tag'>✅ Анализ Instagram-триггеров</span>
+    </div>
+    <p style='margin-top:15px; font-size: 0.9rem; color: #8b949e;'>
+        Активируй доступ за 200₽, чтобы использовать алгоритмы с конверсией ответа 85%+.
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
-st.divider()
+st.header("🔍 Разбор скрытой потери статуса")
+st.markdown("""
+<div class='failed-case'>
+<b>СИТУАЦИЯ:</b> Ты предлагаешь встречу в четверг. Она пишет: <i>"Ой, в четверг я точно не могу, очень много работы, прямо завал..."</i><br><br>
+<b>КАК ОТВЕЧАЕТ ОБЫЧНЫЙ ПАРЕНЬ:</b> <i>"Понимаю, работа — это важно! Давай тогда в субботу или когда освободишься? Я подстроюсь."</i><br><br>
+<b>ПОЧЕМУ ЭТО ОШИБКА:</b> Вроде бы вежливо, но ты только что сообщил ей: "Моё время не имеет значения, я буду ждать твоего окна в графике". Ты моментально потерял ценность. Она не "завал" разгребает, она тестирует твою готовность ждать.<br>
+<b>ПРАВИЛЬНЫЙ ВЕКТОР:</b> <i>"Ок, тогда работай. Как освободишься — маякни, если буду свободен, что-нибудь придумаем."</i> (Ты закрыл диалог на своих условиях, сохранив статус).
+</div>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # МОДУЛЬ 4: АНАЛИЗАТОР ПОДТЕКСТА
