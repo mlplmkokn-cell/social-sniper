@@ -7,58 +7,98 @@ if 'pro_status' not in st.session_state:
     st.session_state.pro_status = False
 if 'last_generation' not in st.session_state:
     st.session_state.last_generation = None
-# ==========================================
-# МОДУЛЬ 1: СТИЛЬ И КОНФИГУРАЦИЯ
-# ==========================================
+    import streamlit as st
+import google.generativeai as genai
+from openai import OpenAI
+import datetime
 
-st.markdown("""
-    <style>
-    /* Делаем фон приложения более темным и текстурированным */
-    .stApp { 
-        background-color: #0a0c10;
-        background-image: radial-gradient(#1a1d24 1px, transparent 1px);
-        background-size: 20px 20px;
-        color: #ffffff; 
-    }
+# ==========================================
+# SLOT 1: КОНФИГУРАЦИЯ И ТРОЙНАЯ ЗАЩИТА АРХИТЕКТУРЫ
+# ==========================================
+import streamlit as st
+# ... остальные импорты ...
+
+# Берем ключи из безопасного хранилища Streamlit
+GROK_KEY = st.secrets["GROK_KEY"]
+GEMINI_KEY_1 = st.secrets["GEMINI_KEY_1"]
+GEMINI_KEY_2 = st.secrets["GEMINI_KEY_2"]
+MY_TG = "@Manipulator393"
+
+# Системный промпт (Фундамент)
+A2_PHILOSOPHY = """
+Ты — эксперт по социальной архитектуре. Твой стиль — 'А2'.
+ПРАВИЛА: 
+1. Никакой нужды (низкая нуждаемость). 
+2. Высокий статус и ценность. 
+3. Текст глубокий, понятный, без лишнего упрощения, доступный, без специфических терминов.
+4. Исключить банальщину и оправдания. 
+5. Всегда пиши полный текст.
+"""
+
+def generate_response(prompt):
+    """Каскадная система: Grok -> Gemini 1 -> Gemini 2"""
+    full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
     
-    /* Стилизация заголовка с "огоньком" */
-    .stHeader h1 {
-        text-shadow: 0 0 10px #ff4b4b, 0 0 20px #ff4b4b;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Попытка 1: Grok
+    try:
+        grok_client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+        res = grok_client.chat.completions.create(model="grok-beta", messages=[{"role": "user", "content": full_prompt}])
+        return res.choices[0].message.content
+    except Exception:
+        # Попытка 2: Gemini (Ключ 1)
+        try:
+            genai.configure(api_key=GEMINI_KEY_1)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            return model.generate_content(full_prompt).text
+        except Exception:
+            # Попытка 3: Gemini (Ключ 2)
+            try:
+                genai.configure(api_key=GEMINI_KEY_2)
+                model2 = genai.GenerativeModel('gemini-1.5-flash')
+                return model2.generate_content(full_prompt).text
+            except Exception:
+                return "⚠️ Все нейросети ушли в защиту. Нужно пролистать до бага и обновить систему."
+
+st.set_page_config(page_title="Social AI", page_icon="🧬")
+
+# База уникальных кодов
+VALID_CODES = {
+    "A2_TEST_MONTH": "2026-05-15",
+    "A2_YEAR_PRO": "2027-04-01",
+    "A2_FOREVER": "forever"
+}
+
+if 'pro_status' not in st.session_state: st.session_state.pro_status = False
+if 'last_res' not in st.session_state: st.session_state.last_res = ""
 
 # ==========================================
-# МОДУЛЬ 2: САЙДБАР
+# SLOT 2: САЙДБАР И АВТОРИЗАЦИЯ
 # ==========================================
 with st.sidebar:
     st.title("🧬 Social AI")
+    user_key = st.text_input("Код доступа:", type="password")
     
-    status_mode = st.radio("Твой статус:", ["Базовый (Наблюдатель)", "Premium (Архитектор)"])
-    st.session_state.pro_status = True if status_mode == "Premium (Архитектор)" else False
-
+    if user_key in VALID_CODES:
+        expiry = VALID_CODES[user_key]
+        if expiry == "forever" or datetime.datetime.strptime(expiry, "%Y-%m-%d") > datetime.datetime.now():
+            st.session_state.pro_status = True
+            st.success("✅ Premium активирован")
+        else:
+            st.error("❌ Код истек")
+            st.session_state.pro_status = False
+    
     st.divider()
-    
     if not st.session_state.pro_status:
-        st.markdown("### 💎 Что дает Premium:")
-        
-        # Три мощных плюса с описанием
+        st.markdown("### 💎 Тарифы")
         st.markdown("""
-        ✅ **Проектировщик Входа** — *Анализирую её Instagram/Bio и создаю 3 варианта сообщения с конверсией ответа 85%*
-        
-        ✅ **Фильтр Статуса** — *Присылаешь свой вариант, а я вырезаю из него суету, оправдания и слабость. Делаю текст мужским.*
-        
-        ✅ **AI-Напарник (Live)** — *Живая докрутка. Ты говоришь, что тебе не нравится в ответе, и мы вместе доводим его до идеала.*
+        1. **Месяц:** 299₽
+        2. **Год:** 1599₽
+        3. **Навсегда:** 5000₽
         """)
-        
-        st.divider()
-        st.write("💰 **Цена: 200₽**")
-        st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", 
-                 caption="Сканируй для оплаты через СБП", width=150)
-        st.caption("Присылай скриншот оплаты в ТГ — активирую доступ моментально.")
-        st.markdown("[🚀 Написать в поддержку](https://t.me/твой_ник)")
-    else:
-        st.success("⭐ Доступ Архитектора активен")
+        st.write("📸 **Оплата по QR (СБП):**")
+        # Вставь реальную ссылку на свой QR-код вместо заглушки
+        st.markdown("[🔗 Открыть QR-код для оплаты](#)")
+        st.caption(f"После оплаты отправь чек в Telegram {MY_TG}, чтобы получить свой код.")
 # ==========================================
 # МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
 # ==========================================
