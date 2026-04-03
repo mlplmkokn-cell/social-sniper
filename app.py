@@ -1,67 +1,80 @@
+# ==========================================
+# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (FAILOVER)
+# За что отвечает: Подключение ключей, логика переключения 
+# между Grok и Gemini, если одна из сетей упадет.
+# ==========================================
 import streamlit as st
-from openai import OpenAI
-# Инициализация памяти (чтобы чат не стирался при каждом нажатии кнопки)
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'pro_status' not in st.session_state:
-    st.session_state.pro_status = False
-if 'last_generation' not in st.session_state:
-    st.session_state.last_generation = None
-    import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
 import datetime
 
-# ==========================================
-# SLOT 1: КОНФИГУРАЦИЯ И ТРОЙНАЯ ЗАЩИТА АРХИТЕКТУРЫ
-# ==========================================
-import streamlit as st
-# ... остальные импорты ...
+# Ключи тянем из Settings -> Secrets в Streamlit Cloud (GROK_KEY, GEMINI_KEY_1, GEMINI_KEY_2)
+try:
+    GROK_KEY = st.secrets["GROK_KEY"]
+    GEMINI_KEY_1 = st.secrets["GEMINI_KEY_1"]
+    GEMINI_KEY_2 = st.secrets["GEMINI_KEY_2"]
+except Exception:
+    st.error("Ошибка: Ключи не найдены в Secrets! Сайт не сможет отвечать.")
+    st.stop()
 
-# Берем ключи из безопасного хранилища Streamlit
-GROK_KEY = st.secrets["GROK_KEY"]
-GEMINI_KEY_1 = st.secrets["GEMINI_KEY_1"]
-GEMINI_KEY_2 = st.secrets["GEMINI_KEY_2"]
 MY_TG = "@Manipulator393"
 
-# Системный промпт (Фундамент)
+# Системная установка А2: глубокий стиль, высокий статус, без нужды.
 A2_PHILOSOPHY = """
-Ты — эксперт по социальной архитектуре. Твой стиль — 'А2'.
+Ты — эксперт по социальной архитектуре и антропологии общения. Твой стиль — 'А2'.
 ПРАВИЛА: 
 1. Никакой нужды (низкая нуждаемость). 
-2. Высокий статус и ценность. 
+2. Высокий статус и ценность (Frame Control). 
 3. Текст глубокий, понятный, без лишнего упрощения, доступный, без специфических терминов.
-4. Исключить банальщину и оправдания. 
-5. Всегда пиши полный текст.
+4. Исключить банальный пикап, дешевые комплименты и оправдания. 
+5. Юмор — тонкая ирония, а не клоунада.
+6. Всегда выдавай полный, готовый к отправке текст.
 """
 
 def generate_response(prompt):
-    """Каскадная система: Grok -> Gemini 1 -> Gemini 2"""
+    """Каскадная система защиты: если один ключ падает, включается следующий."""
     full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
     
-    # Попытка 1: Grok
+    # 1. Попытка через Grok
     try:
-        grok_client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
-        res = grok_client.chat.completions.create(model="grok-beta", messages=[{"role": "user", "content": full_prompt}])
+        client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+        res = client.chat.completions.create(model="grok-beta", messages=[{"role": "user", "content": full_prompt}])
         return res.choices[0].message.content
     except Exception:
-        # Попытка 2: Gemini (Ключ 1)
+        # 2. Попытка через Gemini (Ключ 1)
         try:
             genai.configure(api_key=GEMINI_KEY_1)
             model = genai.GenerativeModel('gemini-1.5-flash')
             return model.generate_content(full_prompt).text
         except Exception:
-            # Попытка 3: Gemini (Ключ 2)
+            # 3. Попытка через Gemini (Ключ 2)
             try:
                 genai.configure(api_key=GEMINI_KEY_2)
                 model2 = genai.GenerativeModel('gemini-1.5-flash')
                 return model2.generate_content(full_prompt).text
             except Exception:
-                return "⚠️ Все нейросети ушли в защиту. Нужно пролистать до бага и обновить систему."
+                return "⚠️ Все нейросети временно недоступны. Попробуй пролистать до бага и обновить страницу."
 
+# ==========================================
+# БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
+# За что отвечает: Создает темную, дорогую атмосферу сайта.
+# ==========================================
 st.set_page_config(page_title="Social AI", page_icon="🧬")
 
-# База уникальных кодов
+st.markdown("""
+    <style>
+    .stApp { background-color: #0d1117; color: #e6edf3; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] { background-color: #161b22; border-radius: 5px; padding: 10px 20px; color: white; }
+    .result-box { background: #161b22; padding: 25px; border-radius: 12px; border: 1px solid #30363d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ==========================================
+# БЛОК 3: САЙДБАР, ОПЛАТА И КОДЫ ДОСТУПА
+# За что отвечает: Авторизация пользователей и продажа подписок.
+# ==========================================
+# База кодов. Формат: "код": "дата (гггг-мм-дд)" или "forever"
 VALID_CODES = {
     "A2_TEST_MONTH": "2026-05-15",
     "A2_YEAR_PRO": "2027-04-01",
@@ -71,216 +84,130 @@ VALID_CODES = {
 if 'pro_status' not in st.session_state: st.session_state.pro_status = False
 if 'last_res' not in st.session_state: st.session_state.last_res = ""
 
-# ==========================================
-# SLOT 2: САЙДБАР И АВТОРИЗАЦИЯ
-# ==========================================
 with st.sidebar:
     st.title("🧬 Social AI")
-    user_key = st.text_input("Код доступа:", type="password")
+    st.caption("Твой личный архитектор социальных связей")
+    
+    user_key = st.text_input("Введите ваш секретный код:", type="password")
     
     if user_key in VALID_CODES:
         expiry = VALID_CODES[user_key]
         if expiry == "forever" or datetime.datetime.strptime(expiry, "%Y-%m-%d") > datetime.datetime.now():
             st.session_state.pro_status = True
-            st.success("✅ Premium активирован")
+            st.success(f"Доступ одобрен: {expiry}")
         else:
-            st.error("❌ Код истек")
+            st.error("Срок действия кода истек.")
             st.session_state.pro_status = False
-    
+
     st.divider()
     if not st.session_state.pro_status:
-        st.markdown("### 💎 Тарифы")
+        st.markdown("### 💎 Активировать Premium")
+        st.write("Получите доступ к алгоритмам А2 и увеличьте свою ценность в переписке.")
         st.markdown("""
-        1. **Месяц:** 299₽
-        2. **Год:** 1599₽
-        3. **Навсегда:** 5000₽
+        * **1 Месяц:** 299₽
+        * **1 Год:** 1599₽ (Выгодно)
+        * **Навсегда:** 5000₽
         """)
         st.write("📸 **Оплата по QR (СБП):**")
-        # Вставь реальную ссылку на свой QR-код вместо заглушки
-        st.markdown("[🔗 Открыть QR-код для оплаты](#)")
-        st.caption(f"После оплаты отправь чек в Telegram {MY_TG}, чтобы получить свой код.")
-# ==========================================
-# МОДУЛЬ 3: ВЕРХНИЙ ХУК (СЛИВЫ)
-# ==========================================
-st.title("🧬 Social AI")
-st.caption("Антропологический анализ коммуникации и проектирование фрейма")
-
-# ВЫНОСИМ ПРЕМИУМ ВЫШЕ (Тизер для всех)
-if 'status' not in st.session_state: st.session_state.status = "Free"
-
-st.markdown("""
-<div class='premium-top'>
-    <h3 style='margin-bottom:10px;'>💎 PREMIUM ДОСТУП</h3>
-    <div style='display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;'>
-        <span class='feature-tag'>✅ Идеальное первое сообщение</span>
-        <span class='feature-tag'>✅ Интерактивная докрутка</span>
-        <span class='feature-tag'>✅ Анализ Instagram-триггеров</span>
-    </div>
-    <p style='margin-top:15px; font-size: 0.9rem; color: #8b949e;'>
-        Активируй доступ за 200₽, чтобы использовать алгоритмы с конверсией ответа 85%+.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-st.header("🔍 Разбор скрытой потери статуса")
-st.markdown("""
-<div class='failed-case'>
-<b>СИТУАЦИЯ:</b> Ты предлагаешь встречу в четверг. Она пишет: <i>"Ой, в четверг я точно не могу, очень много работы, прямо завал..."</i><br><br>
-<b>КАК ОТВЕЧАЕТ ОБЫЧНЫЙ ПАРЕНЬ:</b> <i>"Понятно, работа — это важно! А в субботу освободишься?"</i><br><br>
-<b>ПОЧЕМУ ЭТО ОШИБКА:</b> Вроде бы вежливо, но ты только что сообщил ей: "Моё время не имеет значения, я буду ждать твоего окна в графике". Ты моментально потерял ценность. Она не "завал" разгребает, она тестирует твою готовность ждать.<br>
-<b>ПРАВИЛЬНЫЙ ВЕКТОР:</b> <i>"Ок, тогда работай. Как освободишься — маякни, если буду свободен, что-нибудь придумаем."</i> (Ты закрыл диалог на своих условиях, сохранив статус).
-</div>
-""", unsafe_allow_html=True)
+        # Место под твой QR-код
+        st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", width=180)
+        st.info(f"После оплаты отправь скриншот чека в Telegram: {MY_TG}")
+        st.markdown(f"[🚀 Написать в поддержку](https://t.me/{MY_TG.replace('@', '')})")
 
 # ==========================================
-# МОДУЛЬ 4: АНАЛИЗАТОР ПОДТЕКСТА
+# БЛОК 4: БЕСПЛАТНЫЙ РАЗБОР (МАРКЕТИНГ)
+# За что отвечает: Объясняет ценность продукта новичку.
 # ==========================================
-st.header("1. Разбор подтекста и логика ответа")
-chat_data = st.text_area("Вставь диалог:", height=150, key="main_chat_input")
+st.title("🧬 Архитектура Социального Входа")
 
-if st.button("🚀 Вскрыть подтекст"):
-    if chat_data:
-        with st.spinner("Снайпер делает замер..."):
-            prompt = f"Проанализируй подтекст сообщения: '{chat_data}'. Объясни скрытый мотив, дай краткий ответ и ГЛАВНУЮ МЫСЛЬ: почему отвечаем именно так. Стиль А2."
-            response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-            st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
-            st.write(response.choices[0].message.content)
-            st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        st.warning("Поле пусто.")
-
-st.divider()
+with st.expander("🔍 Почему твои сообщения не работают? (Анализ ошибки)"):
+    st.write("""
+    Большинство парней заваливают переписку в первые 5 минут. Причина — высокая нуждаемость (Tryhard). 
+    Вы пытаетесь понравиться, задаете много вопросов и быстро отвечаете. Это убивает интерес.
+    Алгоритм **А2** пересобирает твой текст так, чтобы ты выглядел самодостаточным и статусным мужчиной, 
+    который выбирает, а не навязывается.
+    """)
 
 # ==========================================
-# МОДУЛЬ 5: ТАКТИЧЕСКИЙ ЧАТ
-# ==========================================
-st.header("2. Тактический Чат: Навигация цели")
-col_a, col_b = st.columns(2)
-with col_a:
-    target = st.text_input("Твоя цель:", placeholder="Например: Кафе -> Дом", key="target_input")
-with col_b:
-    context = st.text_input("Контекст сейчас:", placeholder="Например: Мы в боулинге", key="context_input")
-
-tactical_msg = st.text_area("Что она говорит или делает сейчас?", key="tactical_msg_input")
-
-if st.button("🏹 Построить маршрут"):
-    if tactical_msg:
-        with st.spinner("Просчитываю траекторию..."):
-            prompt = f"Цель: {target}. Контекст: {context}. Текущая ситуация: {tactical_msg}. Дай тактический совет по сближению и перемещению. Стиль А2."
-            response = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-            st.success(response.choices[0].message.content)
-            st.markdown("<div class='logic-hint'>Подсказка: Твоя задача — вести. Любое перемещение — это твое решение.</div>", unsafe_allow_html=True)
-
-st.divider()
-
-# ==========================================
-# МОДУЛЬ 6: БАЗА ПАСХАЛОК
-# ==========================================
-
-# ==========================================
-# SLOT 6: PREMIUM — ИНСТРУМЕНТАРИЙ
+# БЛОК 5: ОСНОВНОЙ ИНСТРУМЕНТАРИЙ (PREMIUM)
+# За что отвечает: Проектировщик зацепок и Фильтр статуса.
 # ==========================================
 if st.session_state.pro_status:
-    st.header("🛠 Инструменты Архитектора")
+    tab1, tab2 = st.tabs(["🚀 Проектировщик Входа", "💎 Фильтр Статуса"])
     
-    tab_strike, tab_tune = st.tabs(["🚀 Проектировщик Входа", "💎 Фильтр Статуса"])
-    
-    with tab_strike:
-        st.subheader("Шаг 1: Сканирование триггеров")
-        st.info("Впиши сюда факты: что она постит, что пишет о себе, какие у неё хобби. Чем больше деталей, тем точнее 'крючок'.")
-        
-        triggers = st.text_area("Факты о ней из Instagram/Bio:", 
-                               placeholder="Например: она часто ходит на выставки, в профиле много фото с черным котом, любит техно 90-х...", 
-                               key="trig_area")
-        
-        if st.button("🔍 Сгенерировать варианты входа"):
-            if triggers:
-                with st.spinner("Анализирую социальный профиль..."):
-                    prompt = f"На основе фактов '{triggers}' создай 3 варианта первого сообщения. Стиль А2. Без подстройки и дешевых комплиментов."
-                    res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-                    st.session_state.last_generation = res.choices[0].message.content
-            else:
-                st.warning("Сначала введи хотя бы один факт о ней.")
+    with tab1:
+        st.subheader("Генерация 'Крючка' на основе контекста")
+        st.write("Впиши детали её профиля, которые ты заметил.")
+        facts = st.text_area("Факты о ней (хобби, фото, музыка):", 
+                             placeholder="Например: Любит корги, фото с выставки винила, в био фраза про интровертов...",
+                             key="facts_input")
+        if st.button("Спроектировать варианты"):
+            st.session_state.last_res = generate_response(f"На основе фактов '{facts}' создай 3 варианта первого сообщения. Стиль А2.")
 
-    with tab_tune:
-        st.subheader("Очистка сообщения от 'суеты'")
-        st.info("Вставь свой вариант ответа, и я сделаю его статусным, убрав всё лишнее.")
-        user_draft = st.text_area("Твой черновик сообщения:", placeholder="Напиши сюда то, что ты хотел ей отправить...", key="draft_area")
-        
-        if st.button("💎 Повысить ценность"):
-            if user_draft:
-                with st.spinner("Удаляю признаки слабости..."):
-                    tuning_prompt = f"Перепиши сообщение в стиле А2, убрав нуждаемость и оправдания: '{user_draft}'. Сделай его лаконичным."
-                    res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": tuning_prompt}])
-                    st.session_state.last_generation = res.choices[0].message.content
-            else:
-                st.warning("Вставь текст для анализа.")
+    with tab2:
+        st.subheader("Фильтр 'Нулевой суеты'")
+        st.write("Преврати свой черновик в сообщение, которое транслирует ценность.")
+        draft = st.text_area("Твой текст:", 
+                             placeholder="Вставь то, что ты хотел ей написать...",
+                             key="draft_input")
+        if st.button("Повысить статус"):
+            st.session_state.last_res = generate_response(f"Перепиши это сообщение, удалив нужду, суету и лишние знаки препинания. Стиль А2: '{draft}'")
 
-    # ==========================================
-    # ИНТУИТИВНЫЙ ШАГ 2: ВЫВОД И ДОКРУТКА
-    # ==========================================
-    if st.session_state.last_generation:
+    # Вывод результата
+    if st.session_state.last_res:
         st.divider()
-        st.subheader("Шаг 2: Результат и финальная доводка")
-        
-        st.markdown("<div class='analysis-box'>", unsafe_allow_html=True)
-        st.write(st.session_state.last_generation)
+        st.markdown("<div class='result-box'>", unsafe_allow_html=True)
+        st.write(st.session_state.last_res)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Отдельное окно для правок — теперь интуитивно понятно
-        st.write("🗣 **AI-Напарник:** Если варианты кажутся слишком дерзкими или, наоборот, мягкими — напиши об этом ниже.")
-        feedback = st.text_input("Что именно изменить в этих вариантах?", 
-                                placeholder="Пример: 'сделай чуть короче', 'добавь больше юмора', 'убери провокацию'...")
-        
-        if st.button("🔄 Обновить варианты под меня"):
-            with st.spinner("Пересчитываю контекст..."):
-                refine_prompt = f"Твой прошлый вариант: {st.session_state.last_generation}. Измени его с учетом этого пожелания: {feedback}. Сохрани глубину А2."
-                res = client.chat.completions.create(model="openai/gpt-4o-mini", messages=[{"role": "user", "content": refine_prompt}])
-                st.session_state.last_generation = res.choices[0].message.content
-                st.rerun()
-
+        # Докрутка результата (AI Напарник)
+        st.write("---")
+        feedback = st.text_input("🗣 AI-Напарник (Правка):", placeholder="Например: 'сделай это чуть более дерзким'...")
+        if st.button("Обновить варианты"):
+            st.session_state.last_res = generate_response(f"Измени прошлый результат: {st.session_state.last_res}. Учти правку: {feedback}")
+            st.rerun()
 else:
-    # Тизер для Free
-    st.markdown("""
-    <div style='background: #1a1a1a; padding: 30px; border-radius: 15px; border: 1px dashed #4a4a4a; text-align: center;'>
-        <h4>🧬 Доступ к инструментам проектирования закрыт</h4>
-        <p style='color: #8b949e;'>Функции 'Проектировщик' и 'Фильтр Статуса' доступны только в Premium-режиме.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    # ==========================================
-# SLOT 7: FAQ & ИНСТРУКЦИЯ (БАЗА ЗНАНИЙ)
+    st.warning("🔒 Доступ закрыт. Чтобы использовать функции Проектировщика и Фильтра, активируйте Premium в боковом меню.")
+
+# ==========================================
+# БЛОК 6: БАЗА ЗНАНИЙ И ЧАСТЫЕ ВОПРОСЫ (FAQ)
+# За что отвечает: Обучение пользователя и снятие страхов.
 # ==========================================
 st.divider()
 st.header("📖 Инструкция и FAQ")
 
-with st.expander("❓ Как пользоваться 'Проектировщиком входа'?"):
-    st.write("""
-    1. Зайди в профиль девушки (Instagram/VK/Tinder).
-    2. Найди 2-3 детали: необычное хобби, локация на фото, порода собаки, музыка в сторис.
-    3. Впиши их в поле 'Факты о ней'. 
-    4. Получи 3 варианта. Если они кажутся слишком наглыми — используй поле 'AI-Напарник' и напиши: *'сделай более дружелюбно'*.
-    """)
+col1, col2 = st.columns(2)
 
-with st.expander("❓ Что такое 'Фильтр Статуса'?"):
-    st.write("""
-    Эта функция для тех, кто уже придумал ответ, но боится показаться 'удобным'. 
-    Вставь свой текст, и ИИ удалит из него:
-    * Лишние смайлики (признак суеты).
-    * Оправдания (почему ты долго не отвечал или почему предлагаешь это место).
-    * Вопросы-просьбы.
-    На выходе ты получишь лаконичный, мужской текст.
-    """)
+with col1:
+    with st.expander("❓ Как это работает?"):
+        st.write("""
+        Мы используем каскад нейросетей Grok и Gemini. Когда ты вводишь данные, система анализирует 
+        их через призму антропологии. ИИ отсекает всё лишнее и выдает текст, который 
+        соответствует высокому социальному статусу.
+        """)
+    
+    with st.expander("❓ Что если она не ответит?"):
+        st.write("""
+        Стиль А2 минимизирует риски. Даже если она не ответила, твое лицо сохранено, так как в твоем 
+        сообщении не было нужды. Ты просто 'маякнул' и пошел дальше. Это и есть победная стратегия.
+        """)
 
-with st.expander("❓ Я оплатил, что дальше?"):
-    st.write("""
-    После оплаты по QR-коду обязательно сделай скриншот чека. 
-    Отправь его в поддержку (ссылка в боковом меню). 
-    В ответ ты получишь секретный код доступа, который нужно ввести один раз в поле 'Режим доступа'.
-    """)
+with col2:
+    with st.expander("❓ Как вводить факты?"):
+        st.write("""
+        Ищи детали, а не общее. Вместо 'Она красивая' напиши 'У неё на фоне гитара' или 'Она была в горах'. 
+        Чем точнее факт, тем мощнее будет 'Крючок' от ИИ.
+        """)
+    
+    with st.expander("❓ Где взять скин на рынке?"):
+        st.write("""
+        Это наше внутреннее понятие. Оно означает, что ты используешь уникальную модель поведения, 
+        которой нет у 99% парней. Твой 'скин' — это спокойствие и статус.
+        """)
 
-with st.expander("❓ Почему ваши сообщения работают?"):
-    st.write("""
-    Мы используем алгоритм **А2 (Антропологический анализ)**. 
-    В отличие от обычных советов, мы не учим 'пикап-фразам'. 
-    Мы учим выстраивать коммуникацию так, чтобы твоя ценность в глазах женщины росла с каждым сообщением.
-    """)
+# ==========================================
+# БЛОК 7: ПОДВАЛ (FOOTER)
+# За что отвечает: Финальная подпись и техподдержка.
+# ==========================================
+st.divider()
+st.caption(f"Social AI © 2026 | Итоговый вариант текста — А2 | Поддержка: {MY_TG}")
