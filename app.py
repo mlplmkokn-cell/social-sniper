@@ -39,41 +39,26 @@ A2_PHILOSOPHY = """
 """
 
 def generate_response(prompt):
-    """Каскадная система защиты: проверяет наличие ключа перед запросом."""
     full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
     
-    # Попытка 1: Grok
-    if GROK_KEY:
-        try:
-            client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
-            res = client.chat.completions.create(
-                model="grok-beta", 
-                messages=[{"role": "system", "content": "You are an A2 social architect."},
-                          {"role": "user", "content": full_prompt}]
-            )
-            return res.choices[0].message.content
-        except Exception:
-            pass # Переход к следующему варианту
+    # 1. Проверка Grok
+    try:
+        client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+        res = client.chat.completions.create(model="grok-beta", messages=[{"role": "user", "content": full_prompt}])
+        return res.choices[0].message.content
+    except Exception as e:
+        error_grok = str(e) # Сохраняем текст ошибки
 
-    # Попытка 2: Gemini (Ключ 1)
-    if GEMINI_KEY_1:
-        try:
-            genai.configure(api_key=GEMINI_KEY_1)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            return model.generate_content(full_prompt).text
-        except Exception:
-            pass
+    # 2. Проверка Gemini
+    try:
+        genai.configure(api_key=GEMINI_KEY_1)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        return model.generate_content(full_prompt).text
+    except Exception as e:
+        error_gemini = str(e) # Сохраняем текст ошибки
 
-    # Попытка 3: Gemini (Ключ 2)
-    if GEMINI_KEY_2:
-        try:
-            genai.configure(api_key=GEMINI_KEY_2)
-            model2 = genai.GenerativeModel('gemini-1.5-flash')
-            return model2.generate_content(full_prompt).text
-        except Exception:
-            pass
-
-    return "⚠️ Все нейросети временно недоступны. Проверь лимиты ключей или обнови страницу."
+    # Если ничего не сработало, выводим ПОЛНУЮ причину
+    return f"⚠️ ОШИБКА ДОСТУПА:\n\nGrok пишет: {error_grok}\n\nGemini пишет: {error_gemini}"
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
