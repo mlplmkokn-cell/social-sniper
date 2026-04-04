@@ -9,6 +9,12 @@ import google.generativeai as genai
 from openai import OpenAI
 import datetime
 
+# Инициализация переменных состояния (чтобы не было AttributeError)
+if 'last_res' not in st.session_state:
+    st.session_state.last_res = ""
+
+if 'pro_status' not in st.session_state:
+    st.session_state.pro_status = False
 # Ключи тянем из Settings -> Secrets в Streamlit Cloud
 try:
     GROK_KEY = st.secrets["GROK_KEY"]
