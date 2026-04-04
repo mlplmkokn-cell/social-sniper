@@ -1,75 +1,79 @@
 # ==========================================
 # БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (FAILOVER)
-# За что отвечает: Подключение ключей, логика переключения 
-# между Grok и Gemini, если одна из сетей упадет.
 # ==========================================
-
 import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
 import datetime
 
-# Инициализация переменных состояния (чтобы не было AttributeError)
+# 1. Инициализация переменных состояния (предотвращает AttributeError)
 if 'last_res' not in st.session_state:
     st.session_state.last_res = ""
 
 if 'pro_status' not in st.session_state:
     st.session_state.pro_status = False
-# Ключи тянем из Settings -> Secrets в Streamlit Cloud
-try:
-    GROK_KEY = st.secrets["GROK_KEY"]
-    GEMINI_KEY_1 = st.secrets["GEMINI_KEY_1"]
-    GEMINI_KEY_2 = st.secrets["GEMINI_KEY_2"]
-except Exception:
-    st.error("Ошибка: Ключи не найдены в Secrets! Сайт не сможет отвечать.")
+
+# 2. Безопасное извлечение ключей
+# Важно: Ключи должны быть вставлены в Settings -> Secrets самого Streamlit Cloud
+GROK_KEY = st.secrets.get("GROK_KEY", None)
+GEMINI_KEY_1 = st.secrets.get("GEMINI_KEY_1", None)
+GEMINI_KEY_2 = st.secrets.get("GEMINI_KEY_2", None)
+
+if not any([GROK_KEY, GEMINI_KEY_1, GEMINI_KEY_2]):
+    st.error("Критическая ошибка: Ни один API-ключ не найден в Secrets. Проверь настройки Manage App -> Settings -> Secrets.")
     st.stop()
 
 MY_TG = "@Manipulator393"
 
-# Системная установка А2: Глубокая логика, статус и работа по целям
+# 3. Философия А2 (Системный промпт)
 A2_PHILOSOPHY = """
-Ты — эксперт по социальной архитектуре, антропологии общения и Frame Control. Твой стиль — 'А2'.
-ТВОЯ ЗАДАЧА: Анализировать переписки и создавать сообщения с позиции высокой ценности.
-
-ПРАВИЛА КОНТЕНТА: 
-1. Низкая нуждаемость (Tryhard = 0): Ты никогда не навязываешься, не оправдываешься и не пытаешься понравиться.
-2. Высокий статус: Твой текст глубокий, понятный, без дешевых пикап-терминов. Ты общаешься как достойный мужчина с достойной женщиной.
-3. Аналитика: Если тебя просят проанализировать сообщение (бесплатный режим) — вскрывай манипуляции и указывай на потерю статуса (оленье поведение). НЕ ДАВАЙ ГОТОВЫЙ ТЕКСТ ОТВЕТА.
-4. Целеполагание: Оценивай каждое сообщение через призму цели пользователя. Сообщение либо приближает к цели, либо отдаляет.
-5. Юмор: Тонкая, мужская ирония. Никакой клоунады.
-6. В PRO-версии: Выдавай безупречный, готовый к копированию текст.
+Ты — эксперт по социальной архитектуре и антропологии общения. Твой стиль — 'А2'.
+Текст должен быть глубоким, понятным, без лишнего упрощения, доступным и без специфических терминов.
+ПРАВИЛА: 
+1. Никакой нужды. 
+2. Высокий статус и Frame Control. 
+3. Исключить банальный пикап и дешевые комплименты. 
+4. Юмор — тонкая ирония.
+5. В бесплатном режиме: только анализ ошибок (без готового ответа).
+6. В PRO: полный, готовый к отправке текст.
 """
 
 def generate_response(prompt):
-    """Каскадная система защиты: если один ключ падает, включается следующий."""
-    # Добавляем философию А2 к каждому запросу
-    full_prompt = f"{A2_PHILOSOPHY}\n\nКОНТЕКСТ И ЗАДАЧА: {prompt}"
+    """Каскадная система защиты: проверяет наличие ключа перед запросом."""
+    full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
     
-    # 1. Попытка через Grok (Самый острый интеллект для А2)
-    try:
-        client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
-        res = client.chat.completions.create(
-            model="grok-beta", 
-            messages=[{"role": "system", "content": "You are an A2 social architect."},
-                      {"role": "user", "content": full_prompt}]
-        )
-        return res.choices[0].message.content
-    except Exception:
-        # 2. Резерв 1: Gemini (Ключ 1)
+    # Попытка 1: Grok
+    if GROK_KEY:
+        try:
+            client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+            res = client.chat.completions.create(
+                model="grok-beta", 
+                messages=[{"role": "system", "content": "You are an A2 social architect."},
+                          {"role": "user", "content": full_prompt}]
+            )
+            return res.choices[0].message.content
+        except Exception:
+            pass # Переход к следующему варианту
+
+    # Попытка 2: Gemini (Ключ 1)
+    if GEMINI_KEY_1:
         try:
             genai.configure(api_key=GEMINI_KEY_1)
             model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(full_prompt)
-            return response.text
+            return model.generate_content(full_prompt).text
         except Exception:
-            # 3. Резерв 2: Gemini (Ключ 2)
-            try:
-                genai.configure(api_key=GEMINI_KEY_2)
-                model2 = genai.GenerativeModel('gemini-1.5-flash')
-                response2 = model2.generate_content(full_prompt)
-                return response2.text
-            except Exception:
-                return "⚠️ Все нейросети временно недоступны. Попробуй обновить страницу."
+            pass
+
+    # Попытка 3: Gemini (Ключ 2)
+    if GEMINI_KEY_2:
+        try:
+            genai.configure(api_key=GEMINI_KEY_2)
+            model2 = genai.GenerativeModel('gemini-1.5-flash')
+            return model2.generate_content(full_prompt).text
+        except Exception:
+            pass
+
+    return "⚠️ Все нейросети временно недоступны. Проверь лимиты ключей или обнови страницу."
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
