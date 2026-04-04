@@ -1,66 +1,76 @@
-# ==========================================
-# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (FAILOVER)
-# ==========================================
 
+# ==========================================
+# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (A2-CASCADE)
+# ==========================================
 import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
-import datetime
 
-# 1. Инициализация переменных состояния (предотвращает AttributeError)
-if 'last_res' not in st.session_state:
-    st.session_state.last_res = ""
+# 1. Состояние приложения
+if 'last_res' not in st.session_state: st.session_state.last_res = ""
+if 'pro_status' not in st.session_state: st.session_state.pro_status = False
+# По умолчанию в PRO выбрана "Автоматическая" иерархия
+if 'selected_engine' not in st.session_state: st.session_state.selected_engine = "Auto"
 
-if 'pro_status' not in st.session_state:
-    st.session_state.pro_status = False
+# 2. Ключи (Бери их в Google AI Studio и x.ai — всё бесплатно на базовых лимитах)
+KEYS = {
+    "GROK": st.secrets.get("GROK_KEY"),
+    "GEMINI_1": st.secrets.get("GEMINI_KEY_1"), # Для Flash
+    "GEMINI_2": st.secrets.get("GEMINI_KEY_2")  # Резерв или Pro
+}
 
-# 2. Безопасное извлечение ключей из Streamlit Secrets
-GROK_KEY = st.secrets.get("GROK_KEY", None)
-GEMINI_KEY_1 = st.secrets.get("GEMINI_KEY_1", None)
-GEMINI_KEY_2 = st.secrets.get("GEMINI_KEY_2", None)
-
-if not any([GROK_KEY, GEMINI_KEY_1, GEMINI_KEY_2]):
-    st.error("Критическая ошибка: Ни один API-ключ не найден в Secrets. Проверь настройки Manage App -> Settings -> Secrets.")
+# Проверка наличия хотя бы одного ключа
+if not any(KEYS.values()):
+    st.error("Ошибка: Ключи не найдены в Secrets.")
     st.stop()
 
-MY_TG = "@Manipulator393"
+# 3. Названия для интерфейса (скрываем реальные имена)
+ENGINES = {
+    "Fast": "Быстрая версия",
+    "Deep": "Думающая версия",
+    "Bold": "Дерзкая версия"
+}
 
-# 3. Философия А2 (Системный промпт)
 A2_PHILOSOPHY = """
-Ты — эксперт по социальной архитектуре и антропологии общения. Твой стиль — 'А2'.
-Текст должен быть глубоким, понятным, без лишнего упрощения.
-ПРАВИЛА: Никакой нужды, высокий статус, Frame Control. 
-В бесплатном режиме: только анализ ошибок (без готового ответа). 
-В PRO: полный, готовый к отправке текст.
+Ты — эксперт по социальной архитектуре А2. 
+Стиль: глубокий, понятный, без дешевых манипуляций. 
+Фрейм: Высокий статус. 
+Если режим FREE: делай только холодный анализ ошибок.
+Если режим PRO: пиши готовый, мощный текст сообщения.
 """
 
-def generate_response(prompt):
-    full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
-    error_log = []
+def call_grok(prompt):
+    client = OpenAI(api_key=KEYS["GROK"], base_url="https://api.x.ai/v1")
+    res = client.chat.completions.create(model="grok-2-latest", messages=[{"role": "user", "content": prompt}])
+    return res.choices[0].message.content
+
+def call_gemini(prompt, model_name='gemini-2.0-flash'):
+    genai.configure(api_key=KEYS["GEMINI_1"])
+    model = genai.GenerativeModel(model_name)
+    return model.generate_content(prompt).text
+
+def generate_response(user_prompt):
+    full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {user_prompt}"
     
-    # 1. Попытка через Grok (Актуальная модель 2026: grok-2)
-    if GROK_KEY:
-        try:
-            client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
-            res = client.chat.completions.create(
-                model="grok-2-latest", # <--- ИСПРАВЛЕНО (было grok-beta)
-                messages=[{"role": "user", "content": full_prompt}]
-            )
-            return res.choices[0].message.content
-        except Exception as e:
-            error_log.append(f"Grok: {str(e)}")
+    # Логика выбора модели
+    # Если PRO и выбран конкретный движок — бьем в него
+    target = st.session_state.selected_engine if st.session_state.pro_status else "Auto"
+    
+    # Очередность попыток (Каскад)
+    attempts = []
+    if target == "Bold" or target == "Auto": attempts.append(("Bold", call_grok))
+    if target == "Deep" or target == "Auto": attempts.append(("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro')))
+    if target == "Fast" or target == "Auto": attempts.append(("Fast", call_gemini))
 
-    # 2. Попытка через Gemini (Актуальная модель: gemini-1.5-flash)
-    if GEMINI_KEY_1:
+    errors = []
+    for name, func in attempts:
         try:
-            genai.configure(api_key=GEMINI_KEY_1)
-            model = genai.GenerativeModel('gemini-2.0-flash') # <--- ИСПРАВЛЕНО (убран v1beta)
-            return model.generate_content(full_prompt).text
+            return func(full_prompt)
         except Exception as e:
-            error_log.append(f"Gemini: {str(e)}")
-
-    # Если всё упало
-    return f"⚠️ ОШИБКА ДОСТУПА:\n\n" + "\n\n".join(error_log)
+            errors.append(f"{name}: {str(e)}")
+            continue
+    
+    return f"⚠️ Системный сбой. Все двигатели заняты.\nЛог: {'; '.join(errors)}"
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
