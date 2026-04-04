@@ -74,55 +74,78 @@ st.markdown("""
 # БЛОК 3: САЙДБАР, ОПЛАТА И КОДЫ ДОСТУПА
 # За что отвечает: Авторизация пользователей и продажа подписок.
 # ==========================================
-with st.sidebar:
-    st.title("🧬 Управление")
-    # ТА САМАЯ КНОПКА
-    activation_key = st.text_input("Введите секретный код для PRO:", type="password")
-    if activation_key:
-        if activation_key == "твой_секретный_код": # Замени на свой код
-            st.session_state.pro_status = True
-            st.success("PRO АКТИВИРОВАН")
-        else:
-            st.error("Неверный код")
-# База кодов. Формат: "код": "дата (гггг-мм-дд)" или "forever"
-VALID_CODES = {
-    "A2_TEST_MONTH": "2026-05-15",
-    "A2_YEAR_PRO": "2027-04-01",
-    "A2_FOREVER": "forever"
-}
 
-if 'pro_status' not in st.session_state: st.session_state.pro_status = False
-if 'last_res' not in st.session_state: st.session_state.last_res = ""
+# 1. ТВОЯ БАЗА КОДОВ (Редактируй только здесь)
+# Просто добавляй новый код в кавычках через запятую в нужный список
+CODS_MONTH = ["M_ALPHA_1", "M_BETA_2"]    # Коды на 1 месяц
+CODS_YEAR = ["Y_ELITE_2026", "Y_PRO_777"] # Коды на 1 год
+CODS_FOREVER = ["A2_BOSS", "MASTER_KEY"]  # Коды навсегда
+
+# Инициализация состояний, если они еще не созданы
+if 'pro_status' not in st.session_state: 
+    st.session_state.pro_status = False
+if 'status_text' not in st.session_state:
+    st.session_state.status_text = "Free Version"
 
 with st.sidebar:
-    st.title("🧬 Social AI")
-    st.caption("Твой личный архитектор социальных связей")
+    st.title("🧬 SOCIAL AI")
+    st.caption("Твой архитектор социальных связей")
     
-    user_key = st.text_input("Введите ваш секретный код:", type="password")
-    
-    if user_key in VALID_CODES:
-        expiry = VALID_CODES[user_key]
-        if expiry == "forever" or datetime.datetime.strptime(expiry, "%Y-%m-%d") > datetime.datetime.now():
-            st.session_state.pro_status = True
-            st.success(f"Доступ одобрен: {expiry}")
-        else:
-            st.error("Срок действия кода истек.")
-            st.session_state.pro_status = False
-
     st.divider()
+    
+    # СЕКЦИЯ АКТИВАЦИИ
+    st.subheader("🔑 Доступ к Premium")
+    
+    # Одно поле ввода
+    user_key = st.text_input("Введите ваш секретный код:", type="password", help="Вставь код, полученный после оплаты")
+    
+    # Кнопка активации (то, чего не хватало)
+    if st.button("Активировать доступ", use_container_width=True):
+        if user_key in CODS_MONTH:
+            st.session_state.pro_status = True
+            st.session_state.status_text = "Premium: Месяц активен"
+            st.success("✅ Код на месяц принят!")
+        elif user_key in CODS_YEAR:
+            st.session_state.pro_status = True
+            st.session_state.status_text = "Premium: Год активен"
+            st.success("✅ Код на год принят!")
+        elif user_key in CODS_FOREVER:
+            st.session_state.pro_status = True
+            st.session_state.status_text = "Premium: Навсегда"
+            st.success("👑 Доступ навсегда открыт!")
+        else:
+            st.error("❌ Код не найден или истек")
+    
+    # Отображение текущего статуса
+    if st.session_state.pro_status:
+        st.info(f"Статус: {st.session_state.status_text}")
+    
+    st.divider()
+
+    # СЕКЦИЯ ОПЛАТЫ (показывается только тем, у кого нет Pro)
     if not st.session_state.pro_status:
-        st.markdown("### 💎 Активировать Premium")
-        st.write("Получите доступ к алгоритмам А2 и увеличьте свою ценность в переписке.")
+        st.markdown("### 💎 Купить Premium")
+        st.write("Выбери тариф и стань архитектором своих переписок:")
+        
+        # Тарифы в виде таблицы или списка
         st.markdown("""
         * **1 Месяц:** 299₽
-        * **1 Год:** 1599₽ (Выгодно)
+        * **1 Год:** 1599₽
         * **Навсегда:** 5000₽
         """)
+        
         st.write("📸 **Оплата по QR (СБП):**")
         # Место под твой QR-код
         st.image("https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg", width=180)
-        st.info(f"После оплаты отправь скриншот чека в Telegram: {MY_TG}")
+        
+        st.info(f"После оплаты отправь чек в Telegram: {MY_TG}")
         st.markdown(f"[🚀 Написать в поддержку](https://t.me/{MY_TG.replace('@', '')})")
+    
+    # Кнопка сброса (для тестов, можешь потом убрать)
+    if st.session_state.pro_status:
+        if st.button("Выйти из системы (Reset)"):
+            st.session_state.pro_status = False
+            st.rerun()
 
 # ==========================================
 # БЛОК 4: БЕСПЛАТНЫЙ РАЗБОР (МАРКЕТИНГ)
