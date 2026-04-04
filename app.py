@@ -1,6 +1,7 @@
 # ==========================================
 # БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (FAILOVER)
 # ==========================================
+
 import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
@@ -13,8 +14,7 @@ if 'last_res' not in st.session_state:
 if 'pro_status' not in st.session_state:
     st.session_state.pro_status = False
 
-# 2. Безопасное извлечение ключей
-# Важно: Ключи должны быть вставлены в Settings -> Secrets самого Streamlit Cloud
+# 2. Безопасное извлечение ключей из Streamlit Secrets
 GROK_KEY = st.secrets.get("GROK_KEY", None)
 GEMINI_KEY_1 = st.secrets.get("GEMINI_KEY_1", None)
 GEMINI_KEY_2 = st.secrets.get("GEMINI_KEY_2", None)
@@ -28,37 +28,39 @@ MY_TG = "@Manipulator393"
 # 3. Философия А2 (Системный промпт)
 A2_PHILOSOPHY = """
 Ты — эксперт по социальной архитектуре и антропологии общения. Твой стиль — 'А2'.
-Текст должен быть глубоким, понятным, без лишнего упрощения, доступным и без специфических терминов.
-ПРАВИЛА: 
-1. Никакой нужды. 
-2. Высокий статус и Frame Control. 
-3. Исключить банальный пикап и дешевые комплименты. 
-4. Юмор — тонкая ирония.
-5. В бесплатном режиме: только анализ ошибок (без готового ответа).
-6. В PRO: полный, готовый к отправке текст.
+Текст должен быть глубоким, понятным, без лишнего упрощения.
+ПРАВИЛА: Никакой нужды, высокий статус, Frame Control. 
+В бесплатном режиме: только анализ ошибок (без готового ответа). 
+В PRO: полный, готовый к отправке текст.
 """
 
 def generate_response(prompt):
     full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {prompt}"
+    error_log = []
     
-    # 1. Проверка Grok
-    try:
-        client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
-        res = client.chat.completions.create(model="grok-beta", messages=[{"role": "user", "content": full_prompt}])
-        return res.choices[0].message.content
-    except Exception as e:
-        error_grok = str(e) # Сохраняем текст ошибки
+    # 1. Попытка через Grok (Актуальная модель 2026: grok-2)
+    if GROK_KEY:
+        try:
+            client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+            res = client.chat.completions.create(
+                model="grok-2", # <--- ИСПРАВЛЕНО (было grok-beta)
+                messages=[{"role": "user", "content": full_prompt}]
+            )
+            return res.choices[0].message.content
+        except Exception as e:
+            error_log.append(f"Grok: {str(e)}")
 
-    # 2. Проверка Gemini
-    try:
-        genai.configure(api_key=GEMINI_KEY_1)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        return model.generate_content(full_prompt).text
-    except Exception as e:
-        error_gemini = str(e) # Сохраняем текст ошибки
+    # 2. Попытка через Gemini (Актуальная модель: gemini-1.5-flash)
+    if GEMINI_KEY_1:
+        try:
+            genai.configure(api_key=GEMINI_KEY_1)
+            model = genai.GenerativeModel('gemini-1.5-flash') # <--- ИСПРАВЛЕНО (убран v1beta)
+            return model.generate_content(full_prompt).text
+        except Exception as e:
+            error_log.append(f"Gemini: {str(e)}")
 
-    # Если ничего не сработало, выводим ПОЛНУЮ причину
-    return f"⚠️ ОШИБКА ДОСТУПА:\n\nGrok пишет: {error_grok}\n\nGemini пишет: {error_gemini}"
+    # Если всё упало
+    return f"⚠️ ОШИБКА ДОСТУПА:\n\n" + "\n\n".join(error_log)
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
