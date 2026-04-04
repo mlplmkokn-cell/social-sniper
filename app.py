@@ -74,6 +74,16 @@ st.markdown("""
 # БЛОК 3: САЙДБАР, ОПЛАТА И КОДЫ ДОСТУПА
 # За что отвечает: Авторизация пользователей и продажа подписок.
 # ==========================================
+with st.sidebar:
+    st.title("🧬 Управление")
+    # ТА САМАЯ КНОПКА
+    activation_key = st.text_input("Введите секретный код для PRO:", type="password")
+    if activation_key:
+        if activation_key == "твой_секретный_код": # Замени на свой код
+            st.session_state.pro_status = True
+            st.success("PRO АКТИВИРОВАН")
+        else:
+            st.error("Неверный код")
 # База кодов. Формат: "код": "дата (гггг-мм-дд)" или "forever"
 VALID_CODES = {
     "A2_TEST_MONTH": "2026-05-15",
@@ -121,51 +131,46 @@ with st.sidebar:
 
 st.title("🧬 Social AI: Архитектура Доминирования")
 
-# 1. Тот самый сценарий с четвергом (Главный хук)
+# 1. Тот самый сценарий с четвергом
 with st.expander("🚩 РАЗБОР СЛИВА: Как ты теряешь ценность за одно сообщение"):
     st.markdown("""
     <div style='background: #161b22; padding: 20px; border-left: 4px solid #f85149; border-radius: 5px;'>
-    <b>Ситуация:</b> Вы договорились на встречу в четверг. В среду она пишет:<br>
-    <i>— "Ой, извини, завтра не получится, появились срочные дела..."</i><br><br>
-    <b>❌ Ответ Оленя:</b> "Ничего страшного, я понимаю. Напиши тогда, как освободишься, подстроимся. Где тебе будет удобно встретиться?"<br>
-    <span style='color: #f85149;'><b>ИТОГ:</b> Ты показал, что твое время ничего не стоит. Ты "удобный". Влечение умерло.</span><br><br>
-    <b>✅ Ответ А2 (Premium):</b> "Принято. Раз у тебя форс-мажор, я тогда займу вечер другими планами. На связи."<br>
-    <span style='color: #238636;'><b>ИТОГ:</b> Ты сохранил статус. Ты занятой человек с альтернативами. Теперь ОНА будет думать, как вернуть твое внимание.</span>
+    <b>Ситуация:</b> Вы договорились на встречу в четверг. В среду она пишет, что не может.<br>
+    <b>❌ Ответ Оленя:</b> "Ничего страшного, напиши как освободишься..." (Слив статуса)<br>
+    <b>✅ Ответ А2:</b> "Принято. Раз у тебя форс-мажор, я займу вечер другими планами. На связи." (Сохранение позиции)
     </div>
     """, unsafe_allow_html=True)
 
-# 2. РЕКЛАМНЫЙ СЛОТ (Будущий профит)
-st.write("")
-st.markdown("""
-    <div style='background: rgba(255, 75, 75, 0.05); border: 1px dashed #444; padding: 15px; border-radius: 10px; text-align: center;'>
-        <span style='color: #666; font-size: 14px;'>📢 МЕСТО ПОД ТВОЮ РЕКЛАМУ / ПАРТНЕРКУ</span><br>
-        <span style='color: #444; font-size: 12px;'>(Например: Ссылка на твой ТГ-канал или закрытый клуб)</span>
-    </div>
-    """, unsafe_allow_html=True)
+st.divider()
+
+# 2. РЕКЛАМНЫЙ СЛОТ
+st.markdown("<div style='text-align: center; color: #444; border: 1px dashed #444; padding: 10px;'>📢 МЕСТО ПОД ТВОЮ РЕКЛАМУ</div>", unsafe_allow_html=True)
 st.write("")
 
-# 3. Бесплатные инструменты (Анализ без решений)
+# 3. Бесплатный Анализатор с ЦЕЛЬЮ
 st.subheader("🕵️ Аналитическая Лаборатория")
+target = st.text_input("🎯 Твоя цель общения:", placeholder="Например: вытянуть на свидание, заинтриговать, перевести в секс...")
+
 col_a, col_b = st.columns(2)
 
 with col_a:
     st.info("Анализ твоего сообщения")
-    u_msg = st.text_input("Вставь фразу, которую ХОЧЕШЬ отправить:", placeholder="Например: Может увидимся завтра?")
+    u_msg = st.text_input("Вставь фразу для отправки:", placeholder="Например: Привет, как дела?")
     if st.button("Проверить харизму"):
-        # ИИ критикует, но не правит (за правкой в Премиум)
-        st.session_state.last_res = generate_response(f"Проанализируй это сообщение на мужественность и статус. Укажи на ошибки, но НЕ ДАВАЙ ИСПРАВЛЕННЫЙ ВАРИАНТ: {u_msg}")
+        # ИИ анализирует соответствие цели, но НЕ дает ответ
+        prompt = f"Цель пользователя: {target}. Его сообщение: {u_msg}. Проанализируй, подходит ли это под контекст А2, захочет ли она этого и дойдет ли он до своей цели? Укажи на ошибки. НЕ ДАВАЙ ГОТОВЫЙ ВАРИАНТ ОТВЕТА."
+        st.session_state.last_res = generate_response(prompt)
 
 with col_b:
     st.info("Анализ её манипуляций")
-    h_msg = st.text_input("Что она тебе написала?", placeholder="Например: Я не знаю, я подумаю...")
+    h_msg = st.text_input("Что она написала?", placeholder="Например: У меня есть парень...")
     if st.button("Вскрыть подтекст"):
-        st.session_state.last_res = generate_response(f"Проанализируй это сообщение от девушки. Какую проверку она проводит и что на самом деле имеет в виду? НЕ ДАВАЙ ВАРИАНТ ОТВЕТА: {h_msg}")
+        st.session_state.last_res = generate_response(f"Проанализируй сообщение от девушки: {h_msg}. Что она имеет в виду на самом деле и как это мешает цели '{target}'? НЕ ДАВАЙ ТЕКСТ ОТВЕТА.")
 
 if st.session_state.last_res:
     st.markdown(f"<div class='result-box'>{st.session_state.last_res}</div>", unsafe_allow_html=True)
     if not st.session_state.pro_status:
-        st.warning("⚠️ Идеальные формулировки для ответа доступны только в [PREMIUM РЕЖИМЕ]")
-
+        st.warning("⚠️ Анализ готов. Идеальные формулировки для достижения цели доступны только в [PREMIUM РЕЖИМЕ].")
 # ==========================================
 # БЛОК 5: ОСНОВНОЙ ИНСТРУМЕНТАРИЙ (PREMIUM)
 # За что отвечает: Проектировщик зацепок и Фильтр статуса.
@@ -174,30 +179,30 @@ if st.session_state.last_res:
 if st.session_state.pro_status:
     st.markdown("<h2 style='color: #ff4b4b;'>⭐ PREMIUM РЕЖИМ АКТИВЕН</h2>", unsafe_allow_html=True)
     
-    tab1, tab2, tab3 = st.tabs(["🚀 Идеальный Вход", "🎯 Контр-удар", "🧠 Индивидуальная Доводка"])
+    # Поле ввода цели переносим и сюда для удобства
+    p_target = st.text_input("🎯 Установи главную цель (для ИИ):", value=target if target else "", placeholder="Например: Свидание в эту субботу")
+
+    tab1, tab2, tab3 = st.tabs(["🚀 Идеальный Вход", "🎯 Контр-удар", "🧠 Стратегия А2"])
     
     with tab1:
-        st.subheader("Генератор первого сообщения")
-        st.write("Дай мне зацепки (профиль, фото, музыка), и я сделаю идеальный вход.")
-        p_facts = st.text_area("Факты о ней:", 
-                              placeholder="Любит корги, фото с винилом, в био фраза про Бродского...", key="p_facts")
-        if st.button("Спроектировать идеальный вход"):
-            st.session_state.last_res = generate_response(f"На основе фактов '{p_facts}' создай 3 уникальных, цепляющих первых сообщения в стиле А2.")
+        st.subheader("Генератор входа под цель")
+        p_facts = st.text_area("Факты о ней (профиль, фото):", placeholder="Любит винил, фото из Парижа...")
+        if st.button("Спроектировать вход"):
+            # ИИ генерирует вход, который ведет к цели
+            st.session_state.last_res = generate_response(f"Цель: {p_target}. На основе фактов '{p_facts}' создай 3 сообщения в стиле А2, которые максимально быстро ведут к этой цели.")
 
     with tab2:
-        st.subheader("Перехват инициативы (Контр-удар)")
-        st.write("Вставь контекст переписки, чтобы я нашел её слабое место и выдал ответ.")
-        p_context = st.text_area("Контекст переписки:", 
-                                placeholder="Твои и её сообщения по порядку...", key="p_context")
-        if st.button("Сгенерировать идеальный ответ"):
-            st.session_state.last_res = generate_response(f"Проанализируй контекст: '{p_context}'. Выдай один хирургически точный и статусный ответ в стиле А2.")
+        st.subheader("Контр-удар (Перехват инициативы)")
+        p_context = st.text_area("Контекст переписки:", placeholder="Твои и её сообщения...")
+        if st.button("Сгенерировать ответ"):
+            st.session_state.last_res = generate_response(f"Цель: {p_target}. Контекст: '{p_context}'. Выдай один идеальный ответ по А2. Учти её подтекст и направь общение к цели.")
 
     with tab3:
-        st.subheader("Работа с напарником (Тюнинг)")
-        st.write("Не нравится ответ? Давай переделаем его под твой характер.")
-        p_adjust = st.text_input("Твои пожелания:", placeholder="Например: 'Я так не хочу, сделай более иронично'...")
-        if st.button("Перестроить ответ"):
-            st.session_state.last_res = generate_response(f"Возьми прошлый вариант: {st.session_state.last_res}. Измени его согласно просьбе: {p_adjust}. Объясни преимущество новой версии.")
+        st.subheader("🧠 Анализ подцелей и поведение")
+        if st.button("Разработать план доминирования"):
+            # ИИ разбивает цель на подцели
+            prompt = f"Цель: {p_target}. Разбей эту цель на 3 тактические подцели. Как себя вести? Какие триггеры использовать? Дай подробную инструкцию по поведению в стиле А2."
+            st.session_state.last_res = generate_response(prompt)
 
     if st.session_state.last_res:
         st.divider()
@@ -205,17 +210,17 @@ if st.session_state.pro_status:
         st.write(st.session_state.last_res)
         st.markdown("</div>", unsafe_allow_html=True)
 else:
-    # Тот самый баннер, который продает Премиум
+    # Баннер продажи
     st.markdown("""
     <div style='background: linear-gradient(135deg, #1f1f1f, #3d0e0e); padding: 40px; border-radius: 20px; border: 1px solid #ff4b4b; text-align: center;'>
-        <h2 style='color: white;'>ХВАТИТ ТЕРЯТЬ ВРЕМЯ</h2>
-        <p style='font-size: 18px;'>Бесплатный анализ — это только диагностика. <b>Premium</b> — это решение.</p>
-        <div style='text-align: left; margin: 20px auto; display: inline-block;'>
-            <p>✅ <b>Идеальные первые сообщения</b> (под любой профиль)</p>
-            <p>✅ <b>Контр-удары</b> на любые женские проверки</p>
-            <p>✅ <b>Индивидуальная доводка</b> с нейросетью</p>
-        </div>
-        <p style='font-weight: bold; color: #ff4b4b;'>Активируй доступ в боковом меню и забери инициативу себе.</p>
+        <h2 style='color: white;'>ХВАТИТ ГАДАТЬ НА КОФЕЙНОЙ ГУЩЕ</h2>
+        <p style='font-size: 18px;'>Ты знаешь цель, но не знаешь дорогу. <b>Premium</b> проложит маршрут.</p>
+        <ul style='text-align: left; display: inline-block; color: white;'>
+            <li>✅ <b>Разбивка цели на этапы</b> (от интриги до встречи)</li>
+            <li>✅ <b>Готовые формулировки</b>, которые ведут к результату</li>
+            <li>✅ <b>Инструкции по поведению</b> (когда молчать, когда давить)</li>
+        </ul>
+        <p style='font-weight: bold; color: #ff4b4b;'>Активируй доступ в боковом меню.</p>
     </div>
     """, unsafe_allow_html=True)
 # ==========================================
