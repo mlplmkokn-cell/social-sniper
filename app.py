@@ -43,7 +43,7 @@ def generate_response(prompt):
         try:
             client = OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
             res = client.chat.completions.create(
-                model="grok-2", # <--- ИСПРАВЛЕНО (было grok-beta)
+                model="grok-2-latest", # <--- ИСПРАВЛЕНО (было grok-beta)
                 messages=[{"role": "user", "content": full_prompt}]
             )
             return res.choices[0].message.content
@@ -54,7 +54,7 @@ def generate_response(prompt):
     if GEMINI_KEY_1:
         try:
             genai.configure(api_key=GEMINI_KEY_1)
-            model = genai.GenerativeModel('gemini-1.5-flash') # <--- ИСПРАВЛЕНО (убран v1beta)
+            model = genai.GenerativeModel('gemini-2.0-flash') # <--- ИСПРАВЛЕНО (убран v1beta)
             return model.generate_content(full_prompt).text
         except Exception as e:
             error_log.append(f"Gemini: {str(e)}")
