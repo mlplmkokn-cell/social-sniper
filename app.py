@@ -1,12 +1,12 @@
 # ==========================================
-# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (A2-CASCADE)
+# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (A2-CASCADE V3)
 # ==========================================
 import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
 import time
 
-# 1. Глобальные константы (Исправляет NameError со скрина ba614f.jpg)
+# 1. Глобальные константы 
 MY_TG = "@Manipulator393" 
 
 # 2. Инициализация состояния (чтобы приложение не вылетало при запуске)
@@ -14,9 +14,9 @@ if 'last_res' not in st.session_state: st.session_state.last_res = ""
 if 'pro_status' not in st.session_state: st.session_state.pro_status = False
 if 'selected_engine' not in st.session_state: st.session_state.selected_engine = "Auto"
 
-# 3. Извлечение ключей из Secrets (Скрин 5c4c8c.jpg напоминает: формат должен быть TOML!)
+# 3. Извлечение ключей (Заменили GROK на OPENROUTER для стабильности)
 KEYS = {
-    "GROK": st.secrets.get("GROK_KEY"),
+    "OPENROUTER": st.secrets.get("OPENROUTER_KEY"),
     "GEMINI_1": st.secrets.get("GEMINI_KEY_1"),
     "GEMINI_2": st.secrets.get("GEMINI_KEY_2")
 }
@@ -34,12 +34,16 @@ A2_PHILOSOPHY = """
 Если режим PRO: пиши полный, готовый к отправке текст сообщения.
 """
 
-# Вспомогательные функции вызова (с исправленными именами моделей)
-def call_grok(prompt):
-    if not KEYS["GROK"]: raise ValueError("Ключ Grok отсутствует")
-    client = OpenAI(api_key=KEYS["GROK"], base_url="https://api.x.ai/v1")
-    # Используем актуальный эндпоинт grok-2-latest вместо grok-beta (Скрин 5cc4e7.jpg)
-    res = client.chat.completions.create(model="grok-2-latest", messages=[{"role": "user", "content": prompt}])
+# ================= ФУНКЦИИ НЕЙРОСЕТЕЙ =================
+
+def call_openrouter(prompt):
+    """Использует бесплатную Llama 3.1. Служит надежной заменой нестабильному Grok."""
+    if not KEYS["OPENROUTER"]: raise ValueError("Ключ OpenRouter отсутствует")
+    client = OpenAI(api_key=KEYS["OPENROUTER"], base_url="https://openrouter.ai/api/v1")
+    res = client.chat.completions.create(
+        model="meta-llama/llama-3.1-8b-instruct:free", 
+        messages=[{"role": "user", "content": prompt}]
+    )
     return res.choices[0].message.content
 
 def call_gemini(prompt, model_name='gemini-2.0-flash'):
@@ -50,20 +54,26 @@ def call_gemini(prompt, model_name='gemini-2.0-flash'):
     model = genai.GenerativeModel(model_name)
     return model.generate_content(prompt).text
 
+# ================= УМНЫЙ КАСКАД =================
+
 def generate_response(user_prompt):
     full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {user_prompt}"
     
     # 5. Умная иерархия и страховка (Failover)
-    # Формируем список нейросетей в зависимости от выбора пользователя в PRO
     target = st.session_state.selected_engine
     
-    # Определяем порядок очереди
-    if target == "Bold": # "Дерзкая" (Grok) на первом месте
-        queue = [("Bold", call_grok), ("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro')), ("Fast", call_gemini)]
-    elif target == "Deep": # "Думающая" (Gemini Pro) на первом месте
-        queue = [("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro')), ("Bold", call_grok), ("Fast", call_gemini)]
-    else: # "Fast" или "Auto" (Бесплатная версия всегда идет по этому пути)
-        queue = [("Fast", call_gemini), ("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro')), ("Bold", call_grok)]
+    # Формируем очередь: Bold теперь привязан к стабильному OpenRouter
+    engine_bold = ("Bold", call_openrouter)
+    engine_deep = ("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro-latest'))
+    engine_fast = ("Fast", lambda p: call_gemini(p, 'gemini-2.0-flash'))
+
+    # Определяем порядок в зависимости от выбора пользователя
+    if target == "Bold": 
+        queue = [engine_bold, engine_deep, engine_fast]
+    elif target == "Deep": 
+        queue = [engine_deep, engine_bold, engine_fast]
+    else: # "Fast" или "Auto" (Бесплатная версия)
+        queue = [engine_fast, engine_bold, engine_deep]
 
     errors = []
     for name, func in queue:
@@ -72,11 +82,10 @@ def generate_response(user_prompt):
             if result: return result
         except Exception as e:
             errors.append(f"{name}: {str(e)}")
-            continue # Если упала одна, идем к следующей
+            continue # Если упала одна сеть, мгновенно и молча идем к следующей
     
-    # Если все три нейросети выдали ошибку
+    # Если все три нейросети легли
     return f"⚠️ Все двигатели заняты или недоступны. Попробуй через минуту.\n\nТехнический лог: {'; '.join(errors)}"
-
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
