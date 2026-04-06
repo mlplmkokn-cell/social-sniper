@@ -1,43 +1,38 @@
 # ==========================================
-# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (A2-CASCADE V3)
+# БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (V4-MONOLITH)
 # ==========================================
 import streamlit as st
 import google.generativeai as genai
 from openai import OpenAI
 import time
 
-# 1. Глобальные константы 
+# 1. Глобальные константы
 MY_TG = "@Manipulator393" 
 
-# 2. Инициализация состояния (чтобы приложение не вылетало при запуске)
+# 2. Инициализация состояния
 if 'last_res' not in st.session_state: st.session_state.last_res = ""
 if 'pro_status' not in st.session_state: st.session_state.pro_status = False
 if 'selected_engine' not in st.session_state: st.session_state.selected_engine = "Auto"
 
-# 3. Извлечение ключей (Заменили GROK на OPENROUTER для стабильности)
+# 3. Ключи (Берем из Secrets)
 KEYS = {
     "OPENROUTER": st.secrets.get("OPENROUTER_KEY"),
     "GEMINI_1": st.secrets.get("GEMINI_KEY_1"),
     "GEMINI_2": st.secrets.get("GEMINI_KEY_2")
 }
 
-# Проверка: если ключей вообще нет, выводим понятную ошибку
-if not any(KEYS.values()):
-    st.error("Критическая ошибка: API-ключи не найдены в настройках Streamlit Secrets.")
-    st.stop()
-
 # 4. Философия А2 (Системный промпт)
 A2_PHILOSOPHY = """
 Ты — эксперт по социальной архитектуре А2. Твой стиль: глубокий, понятный, высокий статус.
 ЗАДАЧА: Анализ переписки или создание сообщения.
-Если режим FREE: делай только холодный анализ ошибок (без готового текста).
-Если режим PRO: пиши полный, готовый к отправке текст сообщения.
+Если режим FREE: только анализ ошибок (без текста сообщения).
+Если режим PRO: пиши готовый, мощный текст для отправки.
 """
 
-# ================= ФУНКЦИИ НЕЙРОСЕТЕЙ =================
+# ================= САМОЗАЛЕЧИВАЮЩИЕСЯ ФУНКЦИИ =================
 
 def call_openrouter(prompt):
-    """Использует бесплатную Llama 3.1. Служит надежной заменой нестабильному Grok."""
+    """Надежный резерв через Llama 3.1"""
     if not KEYS["OPENROUTER"]: raise ValueError("Ключ OpenRouter отсутствует")
     client = OpenAI(api_key=KEYS["OPENROUTER"], base_url="https://openrouter.ai/api/v1")
     res = client.chat.completions.create(
@@ -46,46 +41,57 @@ def call_openrouter(prompt):
     )
     return res.choices[0].message.content
 
-def call_gemini(prompt, model_name='gemini-2.0-flash'):
-    # Авто-выбор рабочего ключа для Gemini
+def call_gemini_with_retry(prompt, model_name='gemini-1.5-flash-latest', max_retries=3):
+    """Умная функция: если Google блокирует, она ждет и пробует снова"""
     current_key = KEYS["GEMINI_1"] if KEYS["GEMINI_1"] else KEYS["GEMINI_2"]
     if not current_key: raise ValueError("Ключи Gemini отсутствуют")
+    
     genai.configure(api_key=current_key)
     model = genai.GenerativeModel(model_name)
-    return model.generate_content(prompt).text
+    
+    for i in range(max_retries):
+        try:
+            return model.generate_content(prompt).text
+        except Exception as e:
+            err_str = str(e).lower()
+            # Если это ошибка лимита (429), ждем
+            if "429" in err_str or "quota" in err_str:
+                wait_time = (i + 1) * 2 # Сначала 2 сек, потом 4 сек
+                st.toast(f"⏳ Google занят, жду {wait_time}с... (Попытка {i+1})")
+                time.sleep(wait_time)
+                continue
+            else:
+                raise e # Если ошибка другая (например, 404), выходим из цикла
+    raise Exception("Google истощен после всех попыток.")
 
-# ================= УМНЫЙ КАСКАД =================
+# ================= УМНЫЙ КАСКАД (ДВИГАТЕЛЬ) =================
 
 def generate_response(user_prompt):
     full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {user_prompt}"
-    
-    # 5. Умная иерархия и страховка (Failover)
     target = st.session_state.selected_engine
     
-    # Формируем очередь: Bold теперь привязан к стабильному OpenRouter
-    engine_bold = ("Bold", call_openrouter)
-    engine_deep = ("Deep", lambda p: call_gemini(p, 'gemini-1.5-pro-latest'))
-    engine_fast = ("Fast", lambda p: call_gemini(p, 'gemini-2.0-flash'))
+    # Конфигурация движков
+    engine_bold = ("Bold (OpenRouter)", lambda p: call_openrouter(p))
+    engine_deep = ("Deep (Gemini Pro)", lambda p: call_gemini_with_retry(p, 'gemini-1.5-pro-latest'))
+    engine_fast = ("Fast (Gemini Flash)", lambda p: call_gemini_with_retry(p, 'gemini-1.5-flash-latest'))
 
-    # Определяем порядок в зависимости от выбора пользователя
-    if target == "Bold": 
-        queue = [engine_bold, engine_deep, engine_fast]
-    elif target == "Deep": 
-        queue = [engine_deep, engine_bold, engine_fast]
-    else: # "Fast" или "Auto" (Бесплатная версия)
-        queue = [engine_fast, engine_bold, engine_deep]
+    # Очередность
+    if target == "Bold":   queue = [engine_bold, engine_deep, engine_fast]
+    elif target == "Deep": queue = [engine_deep, engine_bold, engine_fast]
+    else:                  queue = [engine_fast, engine_bold, engine_deep]
 
     errors = []
     for name, func in queue:
         try:
-            result = func(full_prompt)
-            if result: return result
+            # Даем юзеру знать, кто сейчас работает
+            with st.spinner(f"Работает {name}..."):
+                result = func(full_prompt)
+                if result: return result
         except Exception as e:
-            errors.append(f"{name}: {str(e)}")
-            continue # Если упала одна сеть, мгновенно и молча идем к следующей
+            errors.append(f"{name}: {str(e)[:50]}")
+            continue 
     
-    # Если все три нейросети легли
-    return f"⚠️ Все двигатели заняты или недоступны. Попробуй через минуту.\n\nТехнический лог: {'; '.join(errors)}"
+    return f"⚠️ Система перегружена. Все ИИ-узлы (Google и OpenRouter) временно недоступны.\nТех-лог: {'; '.join(errors)}"
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
