@@ -2,96 +2,28 @@
 # БЛОК 1: ДВИГАТЕЛЬ И БЕЗОПАСНОСТЬ (V4-MONOLITH)
 # ==========================================
 import streamlit as st
-import google.generativeai as genai
-from openai import OpenAI
-import time
+import requests
 
-# 1. Глобальные константы
-MY_TG = "@Manipulator393" 
+st.title("А2: Диагностика систем")
 
-# 2. Инициализация состояния
-if 'last_res' not in st.session_state: st.session_state.last_res = ""
-if 'pro_status' not in st.session_state: st.session_state.pro_status = False
-if 'selected_engine' not in st.session_state: st.session_state.selected_engine = "Auto"
+# Проверка ключей
+key = st.secrets.get("GEMINI_KEY_1", "КЛЮЧ НЕ НАЙДЕН")
+st.write(f"Ваш ключ (первые 5 знаков): {key[:5]}...")
 
-# 3. Ключи (Берем из Secrets)
-KEYS = {
-    "OPENROUTER": st.secrets.get("OPENROUTER_KEY"),
-    "GEMINI_1": st.secrets.get("GEMINI_KEY_1"),
-    "GEMINI_2": st.secrets.get("GEMINI_KEY_2")
-}
-
-# 4. Философия А2 (Системный промпт)
-A2_PHILOSOPHY = """
-Ты — эксперт по социальной архитектуре А2. Твой стиль: глубокий, понятный, высокий статус.
-ЗАДАЧА: Анализ переписки или создание сообщения.
-Если режим FREE: только анализ ошибок (без текста сообщения).
-Если режим PRO: пиши готовый, мощный текст для отправки.
-"""
-
-# ================= САМОЗАЛЕЧИВАЮЩИЕСЯ ФУНКЦИИ =================
-
-def call_openrouter(prompt):
-    """Надежный резерв через Llama 3.1"""
-    if not KEYS["OPENROUTER"]: raise ValueError("Ключ OpenRouter отсутствует")
-    client = OpenAI(api_key=KEYS["OPENROUTER"], base_url="https://openrouter.ai/api/v1")
-    res = client.chat.completions.create(
-        model="meta-llama/llama-3.1-8b-instruct:free", 
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return res.choices[0].message.content
-
-def call_gemini_with_retry(prompt, model_name='gemini-1.5-flash-latest', max_retries=3):
-    """Умная функция: если Google блокирует, она ждет и пробует снова"""
-    current_key = KEYS["GEMINI_1"] if KEYS["GEMINI_1"] else KEYS["GEMINI_2"]
-    if not current_key: raise ValueError("Ключи Gemini отсутствуют")
+if st.button("Сделать тестовый выстрел"):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+    data = {"contents": [{"parts": [{"text": "Привет, ты работаешь?"}]}]}
     
-    genai.configure(api_key=current_key)
-    model = genai.GenerativeModel(model_name)
-    
-    for i in range(max_retries):
-        try:
-            return model.generate_content(prompt).text
-        except Exception as e:
-            err_str = str(e).lower()
-            # Если это ошибка лимита (429), ждем
-            if "429" in err_str or "quota" in err_str:
-                wait_time = (i + 1) * 2 # Сначала 2 сек, потом 4 сек
-                st.toast(f"⏳ Google занят, жду {wait_time}с... (Попытка {i+1})")
-                time.sleep(wait_time)
-                continue
-            else:
-                raise e # Если ошибка другая (например, 404), выходим из цикла
-    raise Exception("Google истощен после всех попыток.")
-
-# ================= УМНЫЙ КАСКАД (ДВИГАТЕЛЬ) =================
-
-def generate_response(user_prompt):
-    full_prompt = f"{A2_PHILOSOPHY}\n\nЗАДАЧА: {user_prompt}"
-    target = st.session_state.selected_engine
-    
-    # Конфигурация движков
-    engine_bold = ("Bold (OpenRouter)", lambda p: call_openrouter(p))
-    engine_deep = ("Deep (Gemini Pro)", lambda p: call_gemini_with_retry(p, 'gemini-1.5-pro-latest'))
-    engine_fast = ("Fast (Gemini Flash)", lambda p: call_gemini_with_retry(p, 'gemini-1.5-flash-latest'))
-
-    # Очередность
-    if target == "Bold":   queue = [engine_bold, engine_deep, engine_fast]
-    elif target == "Deep": queue = [engine_deep, engine_bold, engine_fast]
-    else:                  queue = [engine_fast, engine_bold, engine_deep]
-
-    errors = []
-    for name, func in queue:
-        try:
-            # Даем юзеру знать, кто сейчас работает
-            with st.spinner(f"Работает {name}..."):
-                result = func(full_prompt)
-                if result: return result
-        except Exception as e:
-            errors.append(f"{name}: {str(e)[:50]}")
-            continue 
-    
-    return f"⚠️ Система перегружена. Все ИИ-узлы (Google и OpenRouter) временно недоступны.\nТех-лог: {'; '.join(errors)}"
+    try:
+        res = requests.post(url, json=data)
+        st.write(f"Ответ сервера (Код): {res.status_code}")
+        if res.status_code == 200:
+            st.success("ПОБЕДА! Связь есть. Значит, проблема была в старых библиотеках.")
+            st.write(res.json()['candidates'][0]['content']['parts'][0]['text'])
+        else:
+            st.error(f"Ошибка: {res.text}")
+    except Exception as e:
+        st.error(f"Связь вообще не установлена: {e}")
 # ==========================================
 # БЛОК 2: ВИЗУАЛЬНАЯ УПАКОВКА (CSS)
 # За что отвечает: Создает темную, дорогую атмосферу сайта.
